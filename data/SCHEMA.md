@@ -71,15 +71,25 @@ Columns used: Security ID, Project Name, Code Name, Chronological Order, Subsect
 
 Headers in row 3 from column C, keyed by **Security ID**: Security ID, Project Name, Code Name, Infra Code, FM Monitoring (row 2: Staff Monitoring), E Score, S Score, G Score, ESG Score, Shareholders, CHI Sector, CHI Subsector, CHI Subsubsector, CHI Asset Type, CHI Asset Specific, GHG Scope 1, GHG Scope 2, GHG Scope 3.
 
-## What is not in the four sheets
+## Optional fifth sheet: Scope Settings
 
-Rules the workbook keeps inside Calculations and Output formulas are collected in **§1 of `js/calc/aum.js`** (and can be overridden per browser on **Data › Views & investors**):
+The four sheets do not say how views are composed, which investors belong to the group, who holds each fund's units, or how investors should be named. Those settings live in an optional fifth sheet, **Scope Settings**, kept in the same workbook so every drop is configured automatically. **Data › Setup** downloads it pre-filled from your workbook (investors, views and funds already listed), and everything changed in the app can be downloaded back into it.
 
-- how each view in Mapping column H is composed (an investor column needs nothing; aggregates such as "Total platform" or a look-through column are defined there);
-- each investor column's group (group entity, fund, third party) and attribution weight;
-- who holds the units of each fund investor column, and what share (the fund look-through register: the sheets only carry the group's share of a fund);
-- the FX exception (one investor, one currency, one view, one rate);
-- the IG threshold, maturity buckets, display unit, spread unit and the illustrative concentration thresholds.
+Five tables side by side, title in row 2, headers in row 3, data from row 4 (found by title, so they can move):
+
+| Table | Default columns | Headers (row 3) | Notes |
+|---|---|---|---|
+| Investors | B:E | Investor Column · Display Name · Group · Attribution Weight | Investor Column = the name in Mapping › Funding Name (column Z). Display Name (optional) renames it everywhere in the app. Group: Group entity, Fund, Third party. Weight: 1, 0, 0.35 or 35% |
+| Views | G:I | View · Investor Column · Weight | one row per component; "All investors" or "Group weights" in Investor Column for those two kinds. A view that is itself an investor column needs no row |
+| Look Through | K:M | Investor · Fund · Share | entered per investor: "Investor 1 holds 15% of Fund A" → Investor 1 · Fund A · 15%. The rest of each fund is held outside the platform |
+| FX Exception | O:S | Investor · Currency · View · Rate · Note | rate in units per EUR |
+| Settings | U:V | Setting · Value | Attribution label, IG threshold, Base currency, FX quote (Auto / Units per EUR / EUR per unit), Single portfolio token, Maturity buckets |
+
+Names may be the workbook names or display names. Precedence: **changes made in the app** (this browser) > **the Scope Settings sheet** > **the defaults in §1 of `js/calc/aum.js`** (which define only "Total platform"). Without the sheet, the AUM still calculates: every view that is an investor column works, and the Data page lists what is undefined.
+
+## Formulas
+
+The four sheets can keep their formulas. Excel saves each formula's last result with the file and Scope reads that result, so formula columns (the XLOOKUPs in Holdings B–F and row 2, Hardcoded D–E, the Mapping helper column) come through as values. Scope recomputes those columns itself and compares them with the workbook's results (**Data › Checks**). A formula that fails in the workbook (#REF!, #NAME?, …), typically because it pointed at a sheet that was not copied with the four, is skipped by the check rather than reported as a difference; Scope's own value is used either way. Save as .xlsx or .xlsm (not .xlsb); if the workbook is set to manual calculation, recalculate before saving.
 
 ## Errors and warnings
 

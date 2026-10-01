@@ -11,6 +11,7 @@
   const Scope = global.Scope || (global.Scope = {});
   const LS = { settings: 'scope.settings', adjustments: 'scope.adjustments' };
   const SHEETS = ['Holdings', 'Mapping', 'Hardcoded', 'ESG Hardcoded'];
+  const OPTIONAL_SHEETS = ['Scope Settings']; // read when present: names, groups, weights, views, look-through
 
   const listeners = new Set();
   const state = {
@@ -55,6 +56,7 @@
   const store = (Scope.store = {
     state,
     SHEETS,
+    OPTIONAL_SHEETS,
     /** Register a listener called after every change; returns an unsubscribe function. */
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     /** Bump the data version, drop cached results and notify every listener (the app re-renders). */
@@ -68,9 +70,12 @@
     setSheets(sheets, sources, opts) {
       const o = opts || {};
       if (!o.merge) { state.sheets = {}; state.sources = {}; }
+      // your own data never mixes with the synthetic demo: loading any sheet of yours clears every demo sheet
+      // (including the demo's Scope Settings), so missing sheets show as missing rather than as demo data
+      if (!o.demo) for (const n of Object.keys(state.sheets)) if ((state.sources[n] || {}).kind === 'demo') { delete state.sheets[n]; delete state.sources[n]; }
       const now = new Date().toISOString();
       for (const [name, g] of Object.entries(sheets || {})) {
-        if (!SHEETS.includes(name) || !g || !g.rows) continue;
+        if (!(SHEETS.includes(name) || OPTIONAL_SHEETS.includes(name)) || !g || !g.rows) continue;
         state.sheets[name] = { name, rows: g.rows };
         state.sources[name] = Object.assign({ loadedAt: now }, (sources || {})[name] || { kind: o.demo ? 'demo' : 'paste' });
       }

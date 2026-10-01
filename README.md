@@ -71,7 +71,7 @@ Where the money is concentrated: a world map of exposure by country, a treemap b
 
 - **Investor book.** The asset × investor matrix for nominal, drawn or commitment, investor summaries, and the split between the attributed group and third parties.
 - **Investor pages.** One page per investor with direct exposure, look-through exposure via funds, and total economic exposure. Breakdowns by sector, country, rating and maturity, plus a holdings table showing which fund each indirect exposure comes through.
-- **Look-through.** Fund investor columns are traced to whoever holds their units, so an investor sees its direct exposure, its share of each fund's assets, and the total. Who holds each fund's units is not in the four sheets (they only carry the group's share of a fund), so the register sits with the other settings in §1 of `js/calc/aum.js` and is edited on **Data › Views & investors**. Ultimate holders plus holders outside the platform always reconcile to the platform total, with no double counting, and the group entities' shares are checked against each fund's attribution weight.
+- **Look-through.** Fund investor columns are traced to whoever holds their units, so an investor sees its direct exposure, its share of each fund's assets, and the total. Who holds each fund's units is not in the four sheets (they only carry the group's share of a fund), so it is entered per investor in the Scope Settings sheet or in the investors × funds grid on **Data › Setup**. Ultimate holders plus holders outside the platform always reconcile to the platform total, with no double counting, and the group entities' shares are checked against each fund's attribution weight.
 
 ### Asset pages
 
@@ -83,11 +83,12 @@ Load the four sheets (drop the workbook, drop CSVs, or paste from Excel) and see
 
 ## Using your own data
 
-1. Open **Data & validation** and drop the AUM workbook (`.xlsx` / `.xlsm`), or drop the four sheets as CSV files named after the sheets, or paste each sheet copied from Excel.
-2. Check **Columns** (every input resolved?), **Views & investors** (are the views in Mapping column H all defined? are investor groups and weights right?) and **Checks** (do the workbook's own formulas match?).
-3. Review **Issues**.
+1. Export the four sheets from the AUM workbook (Holdings, Mapping, Hardcoded, ESG Hardcoded), formulas and all, or just use the whole workbook.
+2. Open **Data & validation › Setup** and drop the `.xlsx` / `.xlsm` (or one CSV per sheet, or paste each sheet).
+3. Work down the Setup steps: columns resolved, investors named and classified (group and weight), views defined, fund look-through entered per investor ("Investor 1 holds 15% of Fund A") in an Excel-like grid, workbook checks.
+4. **Download the Scope Settings sheet** and add it to your workbook as a fifth sheet. From then on every drop is configured automatically: drop and play. Later changes can be made in the app or in the sheet.
 
-The sheet layouts are described in [`data/SCHEMA.md`](data/SCHEMA.md), and synthetic examples of all four sheets are in `data/demo/` (`Scope-demo.xlsx` plus one CSV per sheet). A loaded workbook stays in that browser (IndexedDB) until you reset to the demo. Nothing is uploaded anywhere.
+The sheet layouts, the Scope Settings sheet and how formulas are handled are described in [`data/SCHEMA.md`](data/SCHEMA.md). Synthetic examples of all five sheets are in `data/demo/` (`Scope-demo.xlsx` plus one CSV per sheet). A loaded workbook stays in that browser (IndexedDB) until you reset to the demo; loading your own data clears the demo. Nothing is uploaded anywhere.
 
 To regenerate the synthetic demo workbook: `node tools/gen-demo.js` (deterministic). To inspect any workbook from the command line: `node tools/xlsx-check.js file.xlsx`.
 
@@ -97,7 +98,8 @@ All AUM calculations sit in **one file, `js/calc/aum.js`**, which reads top to b
 
 | Section | What it does | Workbook equivalent |
 |---|---|---|
-| §1 Settings | views, investor groups and attribution weights, fund unit holders (look-through), the FX exception, IG threshold, buckets, thresholds | header-row weights and constants inside Calculations / Output formulas |
+| §1 Settings | defaults for everything the four sheets do not hold (views, investor groups and weights, fund unit holders, the FX exception, IG threshold, buckets, thresholds) |
+| §1b Scope Settings | the optional fifth sheet that overrides those defaults per workbook (names, groups, weights, views, look-through, FX exception) | header-row weights and constants inside Calculations / Output formulas |
 | §2 Inputs | where each input lives: the column roles, matched by output name (row 2) or header (row 3) | Holdings row 2 / row 3 |
 | §3 Reading | find each sheet's header row; locate the six Mapping tables by title | — |
 | §4 Mapping lookups | References, Active Assets, Security Mapping, Funding Name, Investment Grade, Fund Check | Mapping C:D, H:M, P:U, Y:AA, AC:AE, AH:AI |
@@ -180,20 +182,20 @@ Conventions that keep the numbers consistent: pages never compute totals themsel
 node tests/run-node.js
 ```
 
-The same tests run in the browser at `tests/index.html`. They cover the workbook reader (xlsx, CSV and pasted ranges), the AUM calculation (table location, column roles, the workbook formula checks, an independent recomputation of total exposure from the raw Holdings grid, views, FX, ratings, exclusions, robustness to where sheets are pasted and to Excel number and date types), the pivot engine (including a 50,000-record performance check), fund look-through reconciliation and the concentration measures.
+The same tests run in the browser at `tests/index.html`. They cover the workbook reader (xlsx, CSV and pasted ranges), a workbook saved with live formulas (`tests/fixtures/formulas.xlsx`), the Scope Settings sheet (precedence, renaming, download round trip), the AUM calculation (table location, column roles, the workbook formula checks, an independent recomputation of total exposure from the raw Holdings grid, views, FX, ratings, exclusions, robustness to where sheets are pasted and to Excel number and date types), the pivot engine (including a 50,000-record performance check), fund look-through reconciliation and the concentration measures.
 
 ## Definitions still to be agreed
 
-These are settings (§1 of `js/calc/aum.js`, with per-browser overrides on **Data › Views & investors** and **Data › Columns**) or are listed on the relevant planned page, rather than decided silently in code.
+These are settings (the optional **Scope Settings** sheet in your workbook, defaults in §1 of `js/calc/aum.js`, and per-browser changes on **Data › Setup** and **Data › Columns**) or are listed on the relevant planned page, rather than decided silently in code.
 
 | Definition | Where it lives today |
 |---|---|
 | Which Holdings column is nominal, drawn, commitment, currency, FX rate | §2 column roles, matched by output name; override on Data › Columns |
 | FX direction | auto-checked against the RC column; override on Data › Views & investors |
-| How each view in Mapping column H is composed | §1 `views`; override per view |
-| Investor groups and attribution weights | §1 `investors`; override per investor |
-| Who holds each fund's units (look-through) | §1 `fundHolders`; override per fund on Data › Views & investors |
-| The FX exception | §1 `fxOverrides` |
+| How each view in Mapping column H is composed | Scope Settings › Views (or §1 `views`); change per view on Data › Setup |
+| Investor names, groups and attribution weights | Scope Settings › Investors (or §1 `investors`); change on Data › Setup |
+| Who holds each fund's units (look-through) | Scope Settings › Look Through (or §1 `fundHolders`); the investors × funds grid on Data › Setup |
+| The FX exception | Scope Settings › FX Exception (or §1 `fxOverrides`) |
 | Rating convention and IG threshold | Mapping Investment Grade table; §1 `igThreshold` |
 | Maturity buckets, display unit, spread unit, concentration thresholds | §1 |
 | Returns and IRR, fees, NAV, cash-flow conventions, covenant definitions, valuation method, sector KPIs, watchlist criteria, report templates | not yet modelled; each planned page lists what must be supplied |

@@ -1,0 +1,15 @@
+,"Scope Settings: names, groups and weights of investor columns, view definitions, fund look-through and the FX exception. Optional sheet; read by name."
+,Investors,,,,,Views,,,,Look Through,,,,FX Exception,,,,,,Settings
+,Investor Column,Display Name,Group,Attribution Weight,,View,Investor Column,Weight,,Investor,Fund,Share,,Investor,Currency,View,Rate,Note,,Setting,Value
+,Investor 1,,Group entity,1,,Total platform,All investors,,,Investor 1,Investor 7,0.15,,Investor 5,GBP,Platform Beta,0.86,hedged rate for one investor on one view (synthetic example),,Attribution label,Group
+,Investor 2,,Group entity,1,,Group (attributed),Group weights,,,Investor 3,Investor 7,0.1,,,,,,,,IG threshold,610
+,Investor 3,,Group entity,1,,Platform Alpha,Investor 1,1,,Investor 5,Investor 7,0.1,,,,,,,,Base currency,EUR
+,Investor 4,,Group entity,1,,Platform Alpha,Investor 2,1,,Investor 9,Investor 7,0.25,,,,,,,,FX quote,Auto
+,Investor 5,,Group entity,1,,Platform Alpha,Investor 3,1,,Investor 2,Investor 8,0.12,,,,,,,,Single portfolio token,SINGLE
+,Investor 6,,Group entity,1,,Platform Alpha,Investor 4,1,,Investor 6,Investor 8,0.08,,,,,,,,Maturity buckets,"0-3, 3-5, 5-10, 10-20, 20+"
+,Investor 7,,Fund,0.35,,Platform Beta,Investor 5,1,,Investor 10,Investor 8,0.3
+,Investor 8,,Fund,0.2,,Platform Beta,Investor 6,1
+,Investor 9,,Third party,0,,Platform Beta,Investor 7,1
+,Investor 10,,Third party,0,,Fund I look-through (35%),Investor 7,0.35
+,Investor 11,,Third party,0,,Investors 11+12,Investor 11,1
+,Investor 12,,Third party,0,,Investors 11+12,Investor 12,1

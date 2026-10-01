@@ -48,6 +48,7 @@
         actions: [
           h('div', { class: 'chips' }, ['nominal', 'drawn', 'commitment'].map((mname) => UI.chip(mname, measure === mname, () => { state.measure = mname; Scope.app.render(true); }))),
           h('div', { class: 'chips' }, UI.chip(`Assets on ${res.platform.label}`, state.scope === 'platform', () => { state.scope = 'platform'; Scope.app.render(true); }), UI.chip('All active assets', state.scope === 'all', () => { state.scope = 'all'; Scope.app.render(true); })),
+          h('a', { class: 'btn btn-sm', href: Scope.href('data', 'setup', 'lookthrough'), style: { textDecoration: 'none' }, title: 'Edit who holds each fund\'s units (Data › Setup)' }, Scope.icon('grid', { size: 14 }), 'Edit look-through'),
         ],
       }));
 

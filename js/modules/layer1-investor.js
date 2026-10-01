@@ -125,7 +125,7 @@
         title: label,
         sub: [meta.key || inv.key, inv.group, `${L} weight ${U.isNum(inv.group_weight) ? inv.group_weight : 0}`,
           fund ? 'fund with a unit register' : null, !inv.isInvestorColumn ? 'not an investor column: look-through exposure only' : null].filter(Boolean).join(' · '),
-        actions: [toggle, filterBtn],
+        actions: [toggle, filterBtn, h('a', { class: 'btn btn-sm', href: Scope.href('data', 'setup', 'lookthrough'), style: { textDecoration: 'none' }, title: 'Edit who holds each fund\'s units (Data › Setup)' }, Scope.icon('grid', { size: 14 }), 'Edit look-through')],
       }));
 
       // ---------- notices ----------

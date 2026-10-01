@@ -201,9 +201,9 @@
     assert(/^Hardcoded![A-Z]+\d+$/.test(Object.values(a.sheets.Hardcoded)[0].cell), 'hardcoded cell');
   });
 
-  add('fund look-through register: from §1 settings, a Data-page override replaces one fund, an empty list switches it off', () => {
+  add('fund look-through register: from the Scope Settings sheet, an app change replaces one fund, an empty list switches it off', () => {
     const r = demo();
-    assert(r.fundRegister.length === 7 && r.fundRegister.every((x) => x.note === 'settings'), 'seven demo rows from settings');
+    assert(r.fundRegister.length === 7 && r.fundRegister.every((x) => x.note === 'sheet'), 'seven demo rows from the Scope Settings sheet');
     const o = demo({ overrides: { fundHolders: { 'Investor 7': [['Investor 2', 0.35]] } } });
     const f7 = o.fundRegister.filter((x) => x.fund_label === 'Investor 7');
     assert(f7.length === 1 && f7[0].holder_label === 'Investor 2' && f7[0].note === 'override', 'override replaces the fund entry');
@@ -212,6 +212,61 @@
     assert(off.fundRegister.length === 0 && off.issues.some((i) => /no unit holders listed/.test(i.message)), 'empty lists switch look-through off with a notice');
     const lt = Scope.engine.lookthrough;
     if (lt) assert(lt.compute(r, r.fundRegister).available && lt.compute(r, r.fundRegister).reconciles, 'look-through available and reconciling on the demo');
+  });
+
+  // tests/fixtures/formulas.xlsx: the demo's four sheets saved by a spreadsheet application with LIVE formulas (Holdings row 2
+  // and columns B–F, Mapping P, Hardcoded D–E as XLOOKUP / IF / IFNA formulas, numbers and real dates). One column (Holdings E)
+  // points at a sheet that is not in the file, as happens when sheets are copied out of a workbook, so it shows #NAME?.
+  /** Bytes of the formula fixture: from disk in Node, over HTTP in the browser (null when opened as a file). */
+  async function formulaFixture() {
+    if (typeof require === 'function' && typeof __dirname !== 'undefined') { const b = require('fs').readFileSync(require('path').join(__dirname, 'fixtures', 'formulas.xlsx')); return new Uint8Array(b.buffer, b.byteOffset, b.byteLength); }
+    if (typeof location !== 'undefined' && /^https?:$/.test(location.protocol)) { const r = await fetch('fixtures/formulas.xlsx'); return r.ok ? new Uint8Array(await r.arrayBuffer()) : null; }
+    return null;
+  }
+  add('a workbook saved with live formulas gives the same results; failed formula columns are skipped, not reported as differences', async () => {
+    const bytes = await formulaFixture(); if (!bytes) return; // opened as a file in the browser: nothing to fetch
+    const read = await Scope.inputs.readFiles([{ name: 'AUM workbook.xlsx', arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) }]);
+    assert(['Holdings', 'Mapping', 'Hardcoded', 'ESG Hardcoded'].every((n) => read.sheets[n]), 'four sheets read');
+    const a = demo(), b = demo({ sheets: Object.assign({}, read.sheets, { 'Scope Settings': T.demoSheets()['Scope Settings'] }) });
+    close(b.metrics.total_exposure_m, a.metrics.total_exposure_m, 1e-9, 'total');
+    close(b.metrics.w_remaining_years, a.metrics.w_remaining_years, 1e-9, 'dates (Excel serials)');
+    assert(b.rows.length === a.rows.length && b.stats.excluded === a.stats.excluded, 'rows and exclusions');
+    const byId = Object.fromEntries(b.inputs.checks.map((c) => [c.id, c]));
+    assert(byId.identificationId.status === 'skipped' && byId.identificationId.failed > 200, 'the broken column is skipped');
+    for (const c of b.inputs.checks.filter((x) => x.status !== 'skipped')) assert(c.matched === c.total, `${c.label}: ${c.matched}/${c.total}`);
+    assert(!b.issues.some((i) => i.severity !== 'info' && /formula/i.test(i.message)), 'no warning or error about formulas');
+  });
+
+  add('Scope Settings sheet: app changes beat the sheet, the sheet beats the defaults, and names can be changed everywhere', () => {
+    const r = demo();
+    assert(r.inputs.settings.present && r.inputs.investors.every((i) => i.source === 'sheet'), 'investors from the sheet');
+    // without the sheet: neutral defaults (only Total platform is defined; everyone unclassified)
+    const s0 = T.demoSheets(); delete s0['Scope Settings'];
+    const none = demo({ sheets: s0 });
+    assert(!none.inputs.settings.present && none.inputs.investors.every((i) => i.source === 'default'), 'defaults without the sheet');
+    assert(none.inputs.views.find((v) => v.view === 'Platform Alpha').kind === 'undefined', 'views need the sheet');
+    close(none.metrics.total_exposure_m, r.metrics.total_exposure_m, 1e-9, 'Total platform unaffected');
+    // an app change wins over the sheet
+    const o = demo({ overrides: { investors: { 'Investor 7': ['Fund', 0.5] } } });
+    const inv7 = o.inputs.investors.find((i) => i.original === 'Investor 7');
+    assert(inv7.weight === 0.5 && inv7.source === 'override', 'override wins');
+    // renaming: the display name replaces the workbook name everywhere, and settings written with either name still apply
+    const n = demo({ overrides: { names: { 'Investor 7': 'Infra Debt Fund I' } } });
+    assert(n.investorColumns.includes('Infra Debt Fund I') && !n.investorColumns.includes('Investor 7'), 'renamed column');
+    assert(n.inputs.investors.find((i) => i.original === 'Investor 7').nameSource === 'override', 'name source');
+    assert(n.fundRegister.some((x) => x.fund_label === 'Infra Debt Fund I'), 'look-through follows the new name');
+    close(n.metrics.total_exposure_m, r.metrics.total_exposure_m, 1e-9, 'totals unchanged by a rename');
+    close(n.assets.reduce((s, a) => s + a.platform['Fund I look-through (35%)'].nominal, 0), r.assets.reduce((s, a) => s + a.platform['Fund I look-through (35%)'].nominal, 0), 1e-6, 'views still resolve');
+  });
+
+  add('Scope Settings sheet: what the app downloads reads back to the same configuration', () => {
+    const r = demo(), eff = AUM.effectiveSettings(r), grid = AUM.settingsGrid(eff);
+    const s1 = T.demoSheets(); s1['Scope Settings'] = grid;
+    const b = demo({ sheets: s1 });
+    close(b.metrics.total_exposure_m, r.metrics.total_exposure_m, 1e-9, 'total');
+    assert(JSON.stringify(b.inputs.views.map((v) => [v.view, v.kind, v.composition])) === JSON.stringify(r.inputs.views.map((v) => [v.view, v.kind, v.composition])), 'views');
+    assert(JSON.stringify(b.fundRegister.map((x) => [x.fund_label, x.holder_label, x.share])) === JSON.stringify(r.fundRegister.map((x) => [x.fund_label, x.holder_label, x.share])), 'look-through');
+    assert(b.positions.find((p) => p.investor_label === 'Investor 5' && p.currency === 'GBP') !== undefined, 'positions');
   });
 
   add('exports and subsets reconcile with the totals', () => {

@@ -6,9 +6,14 @@
  *                  Security Mapping (P helper, Q:U), Funding Name (Y:AA), Investment Grade Mapping (AC:AE), Fund Check (AH:AI…)
  *   Hardcoded      manual deal fields keyed by Security ID (headers in row 3 from column C; lookup labels in row 2)
  *   ESG Hardcoded  ESG scores, taxonomy and GHG keyed by Security ID (same layout)
+ *   Scope Settings OPTIONAL fifth sheet: investor names, groups and weights, view definitions, fund look-through, FX exception (§1b)
+ *
+ * The sheets may keep their formulas: the reader takes each formula's saved result, and §12 compares the workbook's own
+ * formula columns with this file's values (a formula that failed in the workbook, e.g. #REF!, is skipped, not counted).
  *
  * The file reads top to bottom in the same order as the workbook:
- *   §1  Settings the four sheets do not hold (views, group weights, FX exception, thresholds)  ← the only place to edit
+ *   §1  Defaults for what the four sheets do not hold (views, investor groups and weights, look-through, FX exception, thresholds)
+ *   §1b The optional Scope Settings sheet, which overrides those defaults per workbook (and is overridden by changes in the app)
  *   §2  Where each input lives: sheet layouts and column roles (matched by header name, so column moves do not break it)
  *   §3  Reading the sheets: locate header rows and the six Mapping tables
  *   §4  Mapping lookups (References, Active Assets, Security Mapping, Funding Name, Investment Grade, Fund Check)
@@ -49,35 +54,19 @@
     maturityBuckets: ['0-3', '3-5', '5-10', '10-20', '20+'],
     attributionLabel: 'Group',        // name of the attributed investor group in every label ("Group attributed", …)
     spreadUnit: 'auto',               // 'bps' | 'percent' | 'auto' (values below 20 are read as percent and × 100)
+    // ---- The settings below are DEFAULTS. A workbook can carry its own in an optional fifth sheet, "Scope Settings" (§1b),
+    // and anything changed on the Data page overrides both. Precedence: changed in the app > Scope Settings sheet > here.
     // Views (Mapping!H, the Output!G8 choices). A view equal to an investor column needs no entry. Others are defined here:
     //   '*' = every investor column · 'group' = Σ group weight × column · [[investor, weight], …] or [investor, …] (weight 1)
-    views: {
-      'Total platform': '*',
-      'Group (attributed)': 'group',
-      'Platform Alpha': ['Investor 1', 'Investor 2', 'Investor 3', 'Investor 4'],
-      'Platform Beta': ['Investor 5', 'Investor 6', 'Investor 7'],
-      'Fund I look-through (35%)': [['Investor 7', 0.35]],
-      'Investors 11+12': ['Investor 11', 'Investor 12'],
-    },
-    // Investor column (Mapping!Z holdings name) → class and attribution weight (the workbook's row-3/row-4 inclusion
+    views: { 'Total platform': '*' },
+    // Investor column (Mapping!Z holdings name) → [group, attribution weight] (the workbook's row-3/row-4 inclusion
     // weights: 1 = group entity, 0 = third party, 0.35 = fund 35% held by the group). Unlisted investors: 'Unclassified', 0.
-    investors: {
-      'Investor 1': ['Group entity', 1], 'Investor 2': ['Group entity', 1], 'Investor 3': ['Group entity', 1],
-      'Investor 4': ['Group entity', 1], 'Investor 5': ['Group entity', 1], 'Investor 6': ['Group entity', 1],
-      'Investor 7': ['Fund', 0.35], 'Investor 8': ['Fund', 0.2],
-      'Investor 9': ['Third party', 0], 'Investor 10': ['Third party', 0], 'Investor 11': ['Third party', 0], 'Investor 12': ['Third party', 0],
-    },
-    // Fund look-through: who holds the units of each fund investor column, as shares of the fund (the remainder is
-    // held outside the platform). The four sheets carry only the group's share of a fund (the weight above), so the
-    // full register lives here. Group-entity holders' shares should add up to the fund's weight (checked).
-    fundHolders: {
-      'Investor 7': [['Investor 1', 0.15], ['Investor 3', 0.10], ['Investor 5', 0.10], ['Investor 9', 0.25]],
-      'Investor 8': [['Investor 2', 0.12], ['Investor 6', 0.08], ['Investor 10', 0.30]],
-    },
-    // The workbook's one FX exception, as data: positions of `investor` in `currency` use `rate` when `view` is selected.
-    fxOverrides: [
-      { investor: 'Investor 5', currency: 'GBP', view: 'Platform Beta', rate: 0.86, note: 'hedged rate for one investor on one view (synthetic example)' },
-    ],
+    investors: {},
+    // Fund look-through: who holds the units of each fund investor column, as shares of the fund (the remainder is held
+    // outside the platform): { fund: [[holder, share], …] }. Group-entity holders' shares should equal the fund's weight.
+    fundHolders: {},
+    // The workbook's FX exception, as data: positions of `investor` in `currency` use `rate` when `view` is selected.
+    fxOverrides: [],
     // Country → region for the region breakdown (countries not listed fall into 'Rest of world').
     regions: {
       'United Kingdom': 'UK & Ireland', Ireland: 'UK & Ireland',
@@ -89,6 +78,74 @@
     thresholds: { limit_single_name_pct: 10, limit_sponsor_pct: 20, limit_sector_pct: 35, limit_country_pct: 30, limit_sub_ig_pct: 25, limit_non_base_ccy_pct: 40 },
   };
   AUM.CONFIG = CONFIG;
+
+  // =====================================================================================================================
+  // §1b THE OPTIONAL "SCOPE SETTINGS" SHEET
+  // A fifth sheet a workbook can carry so every drop is configured: five tables side by side, title in row 2, headers in
+  // row 3 (same convention as Mapping). Names refer to the workbook's investor columns (Mapping!Z) or their display names.
+  //   Investors     (B:E)  Investor Column · Display Name · Group · Attribution Weight
+  //   Views         (G:I)  View · Investor Column · Weight            one row per component; "All investors" = '*', "Group weights" = 'group'
+  //   Look Through  (K:M)  Investor · Fund · Share                    Investor 1 holds 15% of Fund A → Investor 1 | Fund A | 15%
+  //   FX Exception  (O:S)  Investor · Currency · View · Rate · Note
+  //   Settings      (U:V)  Setting · Value                            Attribution label, IG threshold, FX quote, Spread unit, …
+  // =====================================================================================================================
+  const SETTINGS_SHEET = 'Scope Settings';
+  AUM.SETTINGS_SHEET = SETTINGS_SHEET;
+  const SETTINGS_TABLES = {
+    investors: { title: ['Investors'], cols: { column: ['Investor Column', 'Investor', 'Holdings Name'], name: ['Display Name', 'Name'], group: ['Group'], weight: ['Attribution Weight', 'Weight', 'Group Weight'] }, fallback: 'B' },
+    views: { title: ['Views'], cols: { view: ['View'], column: ['Investor Column', 'Investor', 'Component'], weight: ['Weight'] }, fallback: 'G' },
+    lookThrough: { title: ['Look Through', 'Look-through', 'Fund Look Through'], cols: { investor: ['Investor', 'Holder'], fund: ['Fund'], share: ['Share', 'Ownership'] }, fallback: 'K' },
+    fxException: { title: ['FX Exception', 'FX Exceptions'], cols: { investor: ['Investor'], currency: ['Currency'], view: ['View'], rate: ['Rate'], note: ['Note'] }, fallback: 'O' },
+    settings: { title: ['Settings'], cols: { setting: ['Setting'], value: ['Value'] }, fallback: 'U' },
+  };
+  // Settings table rows the calculation understands (case and spacing ignored) → CONFIG key and parser.
+  const SETTING_KEYS = {
+    attributionlabel: ['attributionLabel', (v) => String(v).trim()], igthreshold: ['igThreshold', (v) => U.toNumber(v)], basecurrency: ['baseCurrency', (v) => String(v).trim().toUpperCase()],
+    fxquote: ['fxQuote', (v) => { const n = String(v).toLowerCase(); return /auto/.test(n) ? 'auto' : /eur per|×|multiply|eurperccy/.test(n) ? 'eur_per_ccy' : /per eur|÷|divide|ccyper/.test(n) ? 'ccy_per_eur' : null; }],
+    spreadunit: ['spreadUnit', (v) => { const n = String(v).toLowerCase(); return /bp/.test(n) ? 'bps' : /per/.test(n) ? 'percent' : /auto/.test(n) ? 'auto' : null; }],
+    singleportfoliotoken: ['singleToken', (v) => String(v).trim()], maturitybuckets: ['maturityBuckets', (v) => String(v).split(/[,;]/).map((x) => x.trim()).filter(Boolean)],
+  };
+  /** Share from a cell: 0.15, "15%", or a whole number above 1 read as percent (15 → 0.15). */
+  const shareOf = (v) => { if (v === null || v === undefined || v === '') return NaN; const t = String(v).trim(); const n = U.toNumber(t); if (!U.isNum(n)) return NaN; return /%$/.test(t) || n > 1 ? n / 100 : n; };
+  /**
+   * Read the Scope Settings sheet into { investors: Map(normName → {column, name, group, weight, row}), views: Map(normView →
+   * {view, def}), lookThrough: [{investor, fund, share, row}], fxException: [...], scalars: {CONFIG key: value}, diag }.
+   */
+  function readSettingsSheet(g, issue) {
+    const t = locateTables(g, SETTINGS_TABLES), out = { investors: new Map(), views: new Map(), lookThrough: [], fxException: [], scalars: {}, diag: {} };
+    for (const [k, tb] of Object.entries(t)) out.diag[k] = { title: tb.title, found: tb.rows.length > 0 || Object.keys(tb.cols).length > 0, foundBy: tb.foundBy, titleCell: tb.titleCell, headerRow: tb.headerRow + 1, rows: tb.rows.length };
+    for (const r of t.investors.rows) {
+      const column = str(r.column); if (!column) continue;
+      const w = blank(r.weight) ? NaN : shareOf(r.weight);
+      out.investors.set(norm(column), { column, name: str(r.name), group: str(r.group), weight: w, row: r.__row });
+    }
+    for (const r of t.views.rows) {
+      const view = str(r.view); if (!view) continue;
+      const k = norm(view), comp = str(r.column), w = blank(r.weight) ? 1 : U.toNumber(r.weight);
+      const cur = out.views.get(k) || { view, def: null, row: r.__row };
+      if (!comp) { out.views.set(k, cur); continue; } // a view listed without components stays undefined (to fill in)
+      if (/^(\*|all|all investors|total)$/i.test(comp)) cur.def = '*';
+      else if (/^group( weights?)?$/i.test(comp)) cur.def = 'group';
+      else { if (!Array.isArray(cur.def)) cur.def = []; cur.def.push([comp, U.isNum(w) ? w : 1]); }
+      out.views.set(k, cur);
+    }
+    for (const r of t.lookThrough.rows) {
+      const investor = str(r.investor), fund = str(r.fund), share = shareOf(r.share);
+      if (!investor || !fund) continue;
+      if (!U.isNum(share)) { issue('warn', SETTINGS_SHEET, r.__row, `Look Through: share "${str(r.share)}" for ${investor} in ${fund} is not a number; row ignored`); continue; }
+      out.lookThrough.push({ investor, fund, share, row: r.__row });
+    }
+    for (const r of t.fxException.rows) {
+      const rate = U.toNumber(r.rate); if (!str(r.investor) || !str(r.currency) || !U.isNum(rate)) continue;
+      out.fxException.push({ investor: str(r.investor), currency: str(r.currency).toUpperCase(), view: str(r.view), rate, note: str(r.note) || 'Scope Settings sheet', row: r.__row });
+    }
+    for (const r of t.settings.rows) {
+      const spec = SETTING_KEYS[norm(r.setting)]; if (!spec || blank(r.value)) continue;
+      const v = spec[1](r.value); if (v === null || v === undefined || (typeof v === 'number' && !U.isNum(v))) { issue('warn', SETTINGS_SHEET, r.__row, `Settings: "${str(r.value)}" is not a valid value for ${str(r.setting)}; ignored`); continue; }
+      out.scalars[spec[0]] = v;
+    }
+    return out;
+  }
 
   // =====================================================================================================================
   // §2  WHERE EACH INPUT LIVES
@@ -250,18 +307,18 @@
   }
 
   /**
-   * Locate the six Mapping tables. A table is found by its title in the first rows (headers on the next row) or, failing
+   * Locate side-by-side tables (the six Mapping tables, the Scope Settings tables). A table is found by its title in the first rows (headers on the next row) or, failing
    * that, at the workbook's default column. Each table's columns are searched only between its own title and the next
    * table's title, because names repeat across tables ("Mapping", "Holdings Name").
    */
-  function locateMapping(g) {
+  function locateTables(g, SPEC) {
     const titles = [];
     for (let r = 0; r < Math.min(10, g.rows.length); r++) {
       const row = g.rows[r] || [];
-      for (let c = 0; c < row.length; c++) for (const [key, t] of Object.entries(MAPPING_TABLES)) if (t.title.some((x) => norm(x) === norm(row[c]))) titles.push({ key, r, c });
+      for (let c = 0; c < row.length; c++) for (const [key, t] of Object.entries(SPEC)) if (t.title.some((x) => norm(x) === norm(row[c]))) titles.push({ key, r, c });
     }
     const found = {};
-    for (const [key, t] of Object.entries(MAPPING_TABLES)) {
+    for (const [key, t] of Object.entries(SPEC)) {
       const hit = titles.filter((x) => x.key === key).sort((a, b) => a.r - b.r || a.c - b.c)[0];
       const titleRow = hit ? hit.r : 1, titleCol = hit ? hit.c : colIndex(t.fallback);
       const headerRow = titleRow + 1;
@@ -284,6 +341,8 @@
     }
     return found;
   }
+  /** The six Mapping tables. */
+  const locateMapping = (g) => locateTables(g, MAPPING_TABLES);
 
   /** Remaining years → maturity bucket ("3-5 y"; "Matured" if negative; "Unknown" without a date). */
   AUM.bucketOf = function (years, buckets) {
@@ -316,7 +375,13 @@
     const issue = (severity, sheet, row, message, extra) => { issues.push(Object.assign({ severity, table: sheet, row, message }, extra || {})); };
     const adjIndex = new Map();
     for (const a of input.adjustments || []) adjIndex.set(`${a.table}|${a.key}|${a.field}`, a);
-    const diag = { sheets: {}, tables: {}, roles: [], checks: [], views: [], investors: [], fx: {} };
+    const diag = { sheets: {}, tables: {}, roles: [], checks: [], views: [], investors: [], fx: {}, settings: { present: false } };
+    // §1b the optional Scope Settings sheet, and the settings in force: app changes > sheet > §1 defaults
+    const settingsGrid = sheets[SETTINGS_SHEET] && sheets[SETTINGS_SHEET].rows && sheets[SETTINGS_SHEET].rows.length ? sheets[SETTINGS_SHEET] : null;
+    const SS = settingsGrid ? readSettingsSheet(settingsGrid, issue) : null;
+    diag.settings = { present: !!SS, source: (input.sources || {})[SETTINGS_SHEET] || null, tables: SS ? SS.diag : {} };
+    const S = Object.assign({}, CONFIG, SS ? SS.scalars : {});
+    if (ov.fxQuote) S.fxQuote = ov.fxQuote; // an override (including 'auto') wins
 
     // ---------- §3 sheets present? header rows and columns ----------
     const layout = {};
@@ -359,7 +424,19 @@
     const codeToIdent = new Map(); for (const s of secById.values()) if (s.codeName && !codeToIdent.has(s.codeName)) codeToIdent.set(s.codeName, s.identificationId);
     // Funding Name (Y:AA): holdings ID (AA, the investor code) → fund name (Y) and holdings name (Z, the investor column)
     const fundById = new Map();
-    for (const r of T('fundingName')) { const id = str(r.holdingsId); if (id && !fundById.has(id)) fundById.set(id, { id, fundName: str(r.fundName), label: str(r.holdingsName) || str(r.fundName) || id, row: r.__row }); }
+    for (const r of T('fundingName')) { const id = str(r.holdingsId); if (id && !fundById.has(id)) fundById.set(id, { id, fundName: str(r.fundName), original: str(r.holdingsName) || str(r.fundName) || id, row: r.__row }); }
+    // display names: changed in the app > Scope Settings › Investors › Display Name > the workbook's own name (column Z).
+    // resolve() maps an original or display name to the display name, so settings may use either.
+    const alias = new Map();
+    for (const f of fundById.values()) {
+      const o = ov.names && (ov.names[f.original] || ov.names[norm(f.original)]);
+      const sh = SS && SS.investors.get(norm(f.original));
+      f.label = o ? String(o) : sh && sh.name ? sh.name : f.original;
+      f.nameSource = o ? 'override' : sh && sh.name ? 'sheet' : 'workbook';
+      alias.set(norm(f.original), f.label); alias.set(norm(f.label), f.label); if (f.fundName) alias.set(norm(f.fundName), alias.get(norm(f.fundName)) || f.label);
+    }
+    const resolve = (x) => alias.get(norm(x)) || String(x);
+    if (SS) for (const sh of SS.investors.values()) if (!alias.has(norm(sh.column))) issue('info', SETTINGS_SHEET, sh.row, `Investors: "${sh.column}" is not an investor column in Mapping › Funding Name; row ignored`);
     // Investment Grade Mapping (AC:AE): rating → score
     const scale = [];
     for (const r of T('investmentGrade')) { const g = U.normalizeGrade(str(r.rating)); const s = num(r.score); if (g && U.isNum(s)) scale.push({ grade: g, up: g.toUpperCase(), numeric: s, scale: str(r.extra), row: r.__row }); }
@@ -384,8 +461,12 @@
     /** Compare a value the workbook computed with this file's value (blank workbook cells are not compared). */
     // Excel error values (#N/A, #REF!, …) all read as "#N/A" here, so a lookup that fails in both places matches.
     const canon = (v) => (v === null || v === undefined ? '' : typeof v === 'string' && /^#/.test(v.trim()) ? '#N/A' : String(v).trim());
+    // A formula that failed in the workbook (#REF!, #VALUE!, #NAME?, …) is not compared: typically it pointed at a sheet that was
+    // not exported with the four. Scope computes the value itself either way; the check reports how many were skipped.
+    const FAILED = /^#(REF!|VALUE!|NAME\?|DIV\/0!|NUM!|NULL!|SPILL!|CALC!|GETTING_DATA)/i;
     const compare = (chk, wbVal, ours, cell) => {
       if (canon(wbVal) === '') return; // the workbook cell is empty: nothing to compare
+      if (typeof wbVal === 'string' && FAILED.test(wbVal.trim())) { chk.failed = (chk.failed || 0) + 1; return; }
       chk.total++;
       const a = canon(wbVal), b = canon(ours);
       if (a === b || (U.isNum(num(a)) && U.isNum(num(b)) && Math.abs(num(a) - num(b)) < 1e-9)) chk.matched++;
@@ -409,8 +490,8 @@
         const p = { line, src, raw, sheet: sheetRow, excluded: false, exclusionReason: null, flags: [] };
         // Holdings D: investor code (the SINGLE rule)
         const model = str(raw.model_portfolio), port = str(raw.portfolio);
-        p.investor_id = model.toUpperCase() === CONFIG.singleToken.toUpperCase() ? port : model;
-        if (model.toUpperCase() === CONFIG.singleToken.toUpperCase()) src.investor_id = { table: 'calc', note: `Model Portfolio = ${CONFIG.singleToken} → Portfolio (${src.portfolio ? src.portfolio.cell : ''})` };
+        p.investor_id = model.toUpperCase() === S.singleToken.toUpperCase() ? port : model;
+        if (model.toUpperCase() === S.singleToken.toUpperCase()) src.investor_id = { table: 'calc', note: `Model Portfolio = ${S.singleToken} → Portfolio (${src.portfolio ? src.portfolio.cell : ''})` };
         p.holding_id = str(raw.security_id);
         p.key = p.investor_id + 'x' + p.holding_id; // Holdings C
         p.security_name = str(raw.security_name);
@@ -449,7 +530,7 @@
         // terms
         p.fixed_floating = norm(raw.rate_type) === 'fixed' ? 'Fixed' : 'Floating';
         let spread = num(raw.spread);
-        if (U.isNum(spread) && (CONFIG.spreadUnit === 'percent' || (CONFIG.spreadUnit === 'auto' && Math.abs(spread) < 20))) spread *= 100;
+        if (U.isNum(spread) && (S.spreadUnit === 'percent' || (S.spreadUnit === 'auto' && Math.abs(spread) < 20))) spread *= 100;
         p.margin_bps = spread; p.coupon = NaN;
         p.wal = num(raw.wal);
         p.instrument_type = str(raw.instrument);
@@ -487,11 +568,11 @@
       const current_grade = int.known && int.grade !== 'NR' && int.numeric > 0 ? int.grade : external_grade;
       const current_numeric = Math.max(int.numeric, external_numeric);
       p.rating = { internal: int.grade, internal_numeric: int.numeric, fitch: fi.grade, moodys: mo.grade, sp: sp.grade, external_grade, external_numeric, current_grade, current_numeric,
-        ig_label: current_numeric > CONFIG.igThreshold ? 'SUB IG' : 'IG', status: current_numeric === 0 ? 'NR' : 'rated', closing: str(p.raw.closing_rating) };
-      p.src.rating = { table: 'calc', note: `internal unless NR, else worst of Fitch / Moody's / S&P; score = MAX(internal, external); IG if ≤ ${CONFIG.igThreshold}` };
+        ig_label: current_numeric > S.igThreshold ? 'SUB IG' : 'IG', status: current_numeric === 0 ? 'NR' : 'rated', closing: str(p.raw.closing_rating) };
+      p.src.rating = { table: 'calc', note: `internal unless NR, else worst of Fitch / Moody's / S&P; score = MAX(internal, external); IG if ≤ ${S.igThreshold}` };
       p.initial_tenor = p.funding_date && p.maturity_date ? U.yearfrac(p.funding_date, p.maturity_date) : 0;
       p.remaining_years = reportingDate && p.maturity_date ? U.yearsBetween(reportingDate, p.maturity_date) : NaN;
-      p.maturity_bucket = AUM.bucketOf(p.remaining_years, CONFIG.maturityBuckets);
+      p.maturity_bucket = AUM.bucketOf(p.remaining_years, S.maturityBuckets);
     }
 
     // ---------- §7 FX ----------
@@ -500,11 +581,11 @@
     for (const p of positions) if (p.currency && U.isNum(p.fx_input) && p.fx_input > 0) { const k = p.currency; if (!rateCounts.has(k)) rateCounts.set(k, new Map()); const m = rateCounts.get(k); m.set(p.fx_input, (m.get(p.fx_input) || 0) + 1); }
     const fxTable = new Map(Array.from(rateCounts, ([ccy, m]) => [ccy, Array.from(m).sort((a, b) => b[1] - a[1])[0][0]]));
     // Direction: does amount ÷ rate (or × rate) reproduce the reference-currency column?
-    let fxQuote = ov.fxQuote || CONFIG.fxQuote; // an override (including 'auto') wins over the setting
+    let fxQuote = S.fxQuote; // changed in the app > Scope Settings sheet > §1
     const fxTest = { tested: 0, divide: 0, multiply: 0 };
     for (const p of positions) {
       const rc = num(p.raw.nominal_rc);
-      if (!U.isNum(rc) || !rc || !U.isNum(p.nominal) || !U.isNum(p.fx_input) || p.fx_input <= 0 || p.currency === CONFIG.baseCurrency) continue;
+      if (!U.isNum(rc) || !rc || !U.isNum(p.nominal) || !U.isNum(p.fx_input) || p.fx_input <= 0 || p.currency === S.baseCurrency) continue;
       fxTest.tested++;
       if (Math.abs(p.nominal / p.fx_input - rc) / Math.abs(rc) < 0.01) fxTest.divide++;
       if (Math.abs(p.nominal * p.fx_input - rc) / Math.abs(rc) < 0.01) fxTest.multiply++;
@@ -516,18 +597,19 @@
     }
     diag.fx = { quote: fxQuote, test: fxTest, table: Array.from(fxTable, ([currency, rate]) => ({ currency, rate, perEur: fxQuote === 'ccy_per_eur' ? rate : 1 / rate })) };
     /** Units of `ccy` per 1 EUR from the table (EUR = 1). */
-    const perEur = (ccy) => { if (ccy === CONFIG.baseCurrency) return 1; const r = fxTable.get(ccy); return U.isNum(r) ? (fxQuote === 'ccy_per_eur' ? r : 1 / r) : NaN; };
-    const displayCcy = input.currency && U.isNum(perEur(input.currency)) ? input.currency : CONFIG.baseCurrency;
-    if (input.currency && displayCcy !== input.currency) issue('warn', 'Holdings', null, `Display currency ${input.currency} has no FX rate in Holdings; amounts shown in ${CONFIG.baseCurrency}`);
+    const perEur = (ccy) => { if (ccy === S.baseCurrency) return 1; const r = fxTable.get(ccy); return U.isNum(r) ? (fxQuote === 'ccy_per_eur' ? r : 1 / r) : NaN; };
+    const displayCcy = input.currency && U.isNum(perEur(input.currency)) ? input.currency : S.baseCurrency;
+    if (input.currency && displayCcy !== input.currency) issue('warn', 'Holdings', null, `Display currency ${input.currency} has no FX rate in Holdings; amounts shown in ${S.baseCurrency}`);
     const dispRate = perEur(displayCcy);
     const viewId = input.platform;
-    const overrides = (ov.fxOverrides || CONFIG.fxOverrides || []);
+    const overrides = ov.fxOverrides || (SS && SS.fxException.length ? SS.fxException : S.fxOverrides) || []; // app > sheet > §1
+    diag.fxException = overrides.map((x) => Object.assign({}, x));
     for (const p of positions) {
       if (p.excluded) continue;
-      let rate = U.isNum(p.fx_input) && p.fx_input > 0 ? (fxQuote === 'ccy_per_eur' ? p.fx_input : 1 / p.fx_input) : p.currency === CONFIG.baseCurrency ? 1 : NaN;
+      let rate = U.isNum(p.fx_input) && p.fx_input > 0 ? (fxQuote === 'ccy_per_eur' ? p.fx_input : 1 / p.fx_input) : p.currency === S.baseCurrency ? 1 : NaN;
       let note = U.isNum(p.fx_input) ? `rate ${p.fx_input} from ${p.src.fx_rate ? p.src.fx_rate.cell : 'Holdings'}` : '';
       if (!U.isNum(rate) && U.isNum(perEur(p.currency))) { rate = perEur(p.currency); note = `rate for ${p.currency} taken from other Holdings rows`; issue('info', 'Holdings', p.line, `FX rate blank; ${p.currency} rate taken from other rows`, { key: p.key }); }
-      const o = overrides.find((x) => x.currency === p.currency && (x.investor === p.investor_label || x.investor === p.investor_id) && (!x.view || x.view === viewId));
+      const o = overrides.find((x) => x.currency === p.currency && (resolve(x.investor) === p.investor_label || String(x.investor) === p.investor_id) && (!x.view || x.view === viewId));
       if (o) { rate = o.rate; note = 'override: ' + (o.note || 'configured FX exception'); }
       if (!U.isNum(rate) || rate <= 0) { p.excluded = true; p.exclusionReason = `no FX rate for ${p.currency}`; issue('error', 'Holdings', p.line, `No FX rate for ${p.currency}: position excluded (the workbook's IFERROR would show 0)`, { key: p.key }); continue; }
       p.fx_rate = rate; p.src.fx_rate = Object.assign({}, p.src.fx_rate || { table: 'calc' }, { note });
@@ -566,52 +648,68 @@
     }
 
     // ---------- §9 Investor columns, asset × investor matrices, group attribution ----------
-    const classOf = (label) => {
-      const o = ov.investors && ov.investors[label]; if (o) return { group: o[0], weight: +o[1], source: 'override' };
-      const c = CONFIG.investors[label]; if (c) return { group: c[0], weight: +c[1], source: 'settings' };
+    /** Group and weight of an investor column: changed in the app > Scope Settings sheet > §1 defaults > Unclassified, 0. */
+    const pickKey = (obj, f) => (obj ? obj[f.label] || obj[f.original] : undefined);
+    const classOf = (f) => {
+      const o = pickKey(ov.investors, f); if (o) return { group: o[0], weight: +o[1], source: 'override' };
+      const sh = SS && (SS.investors.get(norm(f.original)) || SS.investors.get(norm(f.label)));
+      if (sh && (sh.group || U.isNum(sh.weight))) return { group: sh.group || 'Unclassified', weight: U.isNum(sh.weight) ? sh.weight : 0, source: 'sheet' };
+      const c = pickKey(S.investors, f); if (c) return { group: c[0], weight: +c[1], source: 'settings' };
       return { group: 'Unclassified', weight: 0, source: 'default' };
     };
-    const investorOrder = Array.from(fundById.values()).map((f) => Object.assign({ key: f.fundName, label: f.label }, classOf(f.label), { id: f.id, fundName: f.fundName }));
+    const investorOrder = Array.from(fundById.values()).map((f) => Object.assign({ key: f.fundName, label: f.label, original: f.original, nameSource: f.nameSource }, classOf(f), { id: f.id, fundName: f.fundName }));
     const unclassified = investorOrder.filter((i) => i.source === 'default').map((i) => i.label);
-    if (unclassified.length) issue('warn', 'Mapping', null, `No group or attribution weight for ${unclassified.length} investor column(s) (${unclassified.slice(0, 4).join(', ')}${unclassified.length > 4 ? ', …' : ''}): treated as third party, weight 0. Set them on the Data page or in CONFIG.investors`);
+    if (unclassified.length) issue('warn', 'Mapping', null, `No group or attribution weight for ${unclassified.length} investor column(s) (${unclassified.slice(0, 4).join(', ')}${unclassified.length > 4 ? ', …' : ''}): treated as third party, weight 0. Set them on Data › Setup or in the Scope Settings sheet`);
     const unmappedLabels = U.uniq(positions.filter((p) => p.flags.includes('unmapped_investor') && inView(p)).map((p) => p.investor_label));
     const investorMeta = new Map(investorOrder.map((i) => [i.label, i]));
     unmappedLabels.forEach((l) => investorMeta.set(l, { id: '', key: '', label: l, group: 'Unmapped', weight: 0, source: 'default' }));
     for (const p of positions) { const m = investorMeta.get(p.investor_label); p.investor_group = m ? m.group : 'Unmapped'; p.group_weight = m ? m.weight : 0; }
     const investorColumns = investorOrder.map((i) => i.label).concat(unmappedLabels);
-    // fund look-through register: settings (§1), with per-browser overrides replacing a fund's entry
+    // fund look-through register (fund → [[holder, share]]): changed in the app > Scope Settings › Look Through > §1 defaults.
+    // The sheet is entered per investor ("Investor 1 holds 15% of Fund A"); it is regrouped by fund here.
+    const regBy = (src) => { const m = new Map(); for (const [fund, list] of Object.entries(src || {})) m.set(resolve(fund), (list || []).map(([h, sh]) => [resolve(h), +sh])); return m; };
+    const regOverride = regBy(ov.fundHolders), regDefault = regBy(S.fundHolders), regSheet = new Map();
+    if (SS) for (const r of SS.lookThrough) { const f = resolve(r.fund); if (!regSheet.has(f)) regSheet.set(f, []); regSheet.get(f).push([resolve(r.investor), r.share]); }
     const fundRegister = [], registerFunds = [];
-    const regSettings = CONFIG.fundHolders || {}, regOverrides = (ov.fundHolders || {});
-    for (const fund of U.uniq(Object.keys(regSettings).concat(Object.keys(regOverrides)))) {
-      const fromOverride = Object.prototype.hasOwnProperty.call(regOverrides, fund);
-      const holders = (fromOverride ? regOverrides[fund] : regSettings[fund]) || [];
-      if (!holders.length) continue;
-      if (!investorMeta.has(fund)) issue('info', 'Mapping', null, `Fund look-through: "${fund}" is not an investor column in Funding Name; its register is ignored`);
-      else for (const [holder, share] of holders) fundRegister.push({ fund_label: fund, holder_label: String(holder), share: +share, note: fromOverride ? 'override' : 'settings' });
-      registerFunds.push({ fund, holders: holders.map(([h, sh]) => [String(h), +sh]), source: fromOverride ? 'override' : 'settings', known: investorMeta.has(fund) });
+    for (const fund of U.uniq(Array.from(regOverride.keys()).concat(Array.from(regSheet.keys()), Array.from(regDefault.keys())))) {
+      const source = regOverride.has(fund) ? 'override' : regSheet.has(fund) ? 'sheet' : 'settings';
+      const holders = (source === 'override' ? regOverride : source === 'sheet' ? regSheet : regDefault).get(fund) || [];
+      if (!holders.length) continue; // an empty list switches that fund's look-through off
+      const known = investorMeta.has(fund);
+      if (!known) issue('info', source === 'sheet' ? SETTINGS_SHEET : 'Mapping', null, `Fund look-through: "${fund}" is not an investor column in Funding Name; its unit holders are ignored`);
+      else for (const [holder, share] of holders) {
+        if (!investorMeta.has(holder)) issue('info', source === 'sheet' ? SETTINGS_SHEET : 'Mapping', null, `Fund look-through: holder "${holder}" of ${fund} is not an investor column; it is kept as a holder outside the investor columns`);
+        fundRegister.push({ fund_label: fund, holder_label: holder, share: +share, note: source });
+      }
+      registerFunds.push({ fund, holders: holders.map(([h, sh]) => [h, +sh]), source, known });
     }
     const fundsWithoutRegister = investorOrder.filter((i) => /fund/i.test(i.group) && !registerFunds.some((f) => f.fund === i.label)).map((i) => i.label);
-    if (fundsWithoutRegister.length) issue('info', 'Mapping', null, `Fund look-through: no unit holders listed for ${fundsWithoutRegister.join(', ')}; their exposure is shown directly only. Add holders on Data › Views & investors`);
+    if (fundsWithoutRegister.length) issue('info', 'Mapping', null, `Fund look-through: no unit holders listed for ${fundsWithoutRegister.join(', ')}; their exposure is shown directly only. Add them on Data › Setup or in the Scope Settings sheet`);
     diag.fundHolders = registerFunds;
-    diag.investors = investorOrder.map((i) => ({ id: i.id, label: i.label, fundName: i.fundName, group: i.group, weight: i.weight, source: i.source }));
+    diag.funds = U.uniq(investorOrder.filter((i) => /fund/i.test(i.group)).map((i) => i.label).concat(registerFunds.filter((f) => f.known).map((f) => f.fund)));
+    diag.investors = investorOrder.map((i) => { const sh = SS && SS.investors.get(norm(i.original)); return { id: i.id, original: i.original, label: i.label, fundName: i.fundName, group: i.group, weight: i.weight, source: i.source, nameSource: i.nameSource, sheetName: sh && sh.name ? sh.name : '' }; });
 
     // ---------- §10 Views (Output!G8) ----------
     const viewList = viewNames.length ? viewNames : ['Total platform'].concat(investorOrder.map((i) => i.label));
     if (!viewNames.length) issue('info', 'Mapping', null, 'No views in Mapping › Active Assets column H; showing Total platform and one view per investor');
     const platforms = [];
     for (const name of viewList) {
-      let def = ov.views && ov.views[name] !== undefined ? ov.views[name] : CONFIG.views[name];
-      let kind = ov.views && ov.views[name] !== undefined ? 'override' : def !== undefined ? 'settings' : null;
+      // definition: changed in the app > Scope Settings › Views > §1 defaults > the view is an investor column
+      const shView = SS && SS.views.get(norm(name));
+      let def, kind = null;
+      if (ov.views && ov.views[name] !== undefined) { def = ov.views[name]; kind = 'override'; }
+      else if (shView && shView.def) { def = shView.def; kind = 'sheet'; }
+      else if (S.views[name] !== undefined) { def = S.views[name]; kind = 'settings'; }
       let composition = null;
       if (def === '*') composition = [{ label: '*', weight: 1 }];
       else if (def === 'group') composition = investorColumns.map((l) => ({ label: l, weight: (investorMeta.get(l) || { weight: 0 }).weight })).filter((c) => c.weight);
-      else if (Array.isArray(def)) composition = def.map((x) => (Array.isArray(x) ? { label: String(x[0]), weight: +x[1] } : { label: String(x), weight: 1 }));
-      else if (investorMeta.has(name)) { composition = [{ label: name, weight: 1 }]; kind = 'investor column'; }
+      else if (Array.isArray(def)) composition = def.map((x) => (Array.isArray(x) ? { label: resolve(x[0]), weight: +x[1] } : { label: resolve(x), weight: 1 }));
+      else if (investorMeta.has(resolve(name))) { composition = [{ label: resolve(name), weight: 1 }]; kind = 'investor column'; }
       else { const f = investorOrder.find((i) => i.fundName === name); if (f) { composition = [{ label: f.label, weight: 1 }]; kind = 'investor column'; } }
-      if (!composition) { kind = 'undefined'; composition = []; issue('warn', 'Mapping', null, `View "${name}" (Mapping column H) is not an investor column and has no definition: it shows nothing until defined on the Data page or in CONFIG.views`); }
+      if (!composition) { kind = 'undefined'; composition = []; issue('warn', 'Mapping', null, `View "${name}" (Mapping column H) is not an investor column and has no definition: it shows nothing until defined on the Data page or in the Scope Settings sheet`); }
       for (const c of composition) if (c.label !== '*' && !investorMeta.has(c.label)) issue('warn', 'Mapping', null, `View "${name}" refers to unknown investor column "${c.label}"`);
       platforms.push({ id: name, label: name, composition, kind });
-      diag.views.push({ view: name, kind, composition });
+      diag.views.push({ view: name, kind, composition, def: def === '*' || def === 'group' ? def : Array.isArray(def) ? 'list' : kind === 'investor column' ? 'column' : null });
     }
     const platformId = platforms.some((p) => p.id === viewId) ? viewId : platforms.length ? platforms[0].id : '';
     const platform = platforms.find((p) => p.id === platformId) || { id: '', label: 'No view', composition: [] };
@@ -664,7 +762,7 @@
       set('sector', str(ev('chi_sector')) || str(hv('sector_class')), esrc('chi_sector') || hsrc('sector_class'));
       set('subsector', str(hv('subsector')) || str(ev('chi_subsector')), hsrc('subsector') || esrc('chi_subsector'));
       set('country', first ? str(first.raw.country) : '', first && first.src.country);
-      set('region', a.attrs.country ? CONFIG.regions[a.attrs.country] || 'Rest of world' : '', { table: 'calc', note: 'country → region (CONFIG.regions)' });
+      set('region', a.attrs.country ? S.regions[a.attrs.country] || 'Rest of world' : '', { table: 'calc', note: 'country → region (S.regions)' });
       set('sponsor', str(hv('shareholders')) || str(ev('shareholders')) || (first ? str(first.raw.parent_issuer) : ''), hsrc('shareholders') || esrc('shareholders'));
       set('repayment_type', first ? (/^(y|yes|true|1|bullet)$/i.test(str(first.raw.bullet)) ? 'Bullet' : str(first.raw.bullet) ? 'Amortising' : '') : '', first && first.src.bullet);
       set('cash_flow_type', str(hv('cashflow_type')), hsrc('cashflow_type'));
@@ -710,7 +808,7 @@
     }
 
     // ---------- Output rows for the selected view ----------
-    const unit = CONFIG.unit;
+    const unit = S.unit;
     const rows = assets.filter((a) => a.inActiveList && a.platform[platformId] && a.platform[platformId].nominal > 0).map((a) => {
       const pv = a.platform[platformId];
       const r = {
@@ -737,8 +835,8 @@
 
     // ---------- §11 metrics ----------
     const cfgOut = {
-      base_currency: CONFIG.baseCurrency, ig_threshold: CONFIG.igThreshold, single_token: CONFIG.singleToken, unit, buckets: CONFIG.maturityBuckets,
-      attribution_label: CONFIG.attributionLabel, dataset_label: input.datasetLabel || '', raw: Object.assign({ base_currency: CONFIG.baseCurrency }, CONFIG.thresholds),
+      base_currency: S.baseCurrency, ig_threshold: S.igThreshold, single_token: S.singleToken, unit, buckets: S.maturityBuckets,
+      attribution_label: S.attributionLabel, dataset_label: input.datasetLabel || '', raw: Object.assign({ base_currency: S.baseCurrency }, S.thresholds),
     };
     const { metrics, distributions } = AUM.summarise(rows, ratingScaleSP, cfgOut);
     const investors = investorColumns.map((label) => {
@@ -751,9 +849,15 @@
 
     // ---------- §12 checks ----------
     for (const [id, c] of Object.entries(Object.assign({}, checks, hcChecks))) {
-      if (!c.total) continue;
+      if (!c.total && !c.failed) continue;
+      if (!c.total) { // every workbook value was a formula error: nothing to compare
+        diag.checks.push({ id, label: c.label, total: 0, matched: 0, failed: c.failed, status: 'skipped', examples: [] });
+        issue('info', id.startsWith('hc') ? 'Hardcoded' : 'Holdings', null, `Workbook formula check skipped: ${c.label}: all ${c.failed} workbook values are formula errors (e.g. #REF!, usually a reference to a sheet not exported with the four). Scope calculates these itself`);
+        continue;
+      }
       const status = c.matched === c.total ? 'ok' : c.matched / c.total > 0.95 ? 'warn' : 'error';
-      diag.checks.push({ id, label: c.label, total: c.total, matched: c.matched, status, examples: c.examples });
+      diag.checks.push({ id, label: c.label, total: c.total, matched: c.matched, failed: c.failed || 0, status, examples: c.examples });
+      if (c.failed) issue('info', id.startsWith('hc') ? 'Hardcoded' : 'Holdings', null, `Workbook formula check: ${c.label}: ${c.failed} workbook value(s) are formula errors and were not compared`);
       if (status !== 'ok') issue(status === 'warn' ? 'warn' : 'error', id.startsWith('hc') ? 'Hardcoded' : 'Holdings', null, `Workbook formula check: ${c.label}: ${c.total - c.matched} of ${c.total} differ (see Data › Checks)`);
     }
     for (const fc of fundCheck) if (!blank(fc.holdings) && !investorMeta.has(str(fc.holdings))) issue('warn', 'Mapping', fc.__row, `Fund Check: "${str(fc.holdings)}" is not an investor column in Funding Name`);
@@ -765,7 +869,7 @@
     const sev = { error: 0, warn: 0, info: 0 }; issues.forEach((i) => { sev[i.severity] = (sev[i.severity] || 0) + 1; });
     const fatal = !H || !H.map.security_id || !H.map.nominal || !H.map.currency;
     return {
-      config: cfgOut, ratingScale: ratingScaleSP, displayCurrency: displayCcy, currencies: [CONFIG.baseCurrency].concat(Array.from(fxTable.keys()).filter((c) => c !== CONFIG.baseCurrency && U.isNum(perEur(c)))).filter((c, i, a) => a.indexOf(c) === i),
+      config: cfgOut, ratingScale: ratingScaleSP, displayCurrency: displayCcy, currencies: [S.baseCurrency].concat(Array.from(fxTable.keys()).filter((c) => c !== S.baseCurrency && U.isNum(perEur(c)))).filter((c, i, a) => a.indexOf(c) === i),
       reportingDate, quarter: U.quarterCaption(reportingDate),
       platform, platformId, platforms, investors, investorColumns, assets, positions, rows, metrics, distributions, issues, issueCounts: sev,
       stats: { holdingsRows: H ? H.g.rows.length - H.hr - 1 : 0, paddingRows, positions: positions.length, excluded: excludedPositions.length, included: positions.length - excludedPositions.length,
@@ -866,6 +970,69 @@
       internal_grade: p.rating.internal, fitch: p.rating.fitch, moodys: p.rating.moodys, sp: p.rating.sp, external_grade: p.rating.external_grade, current_grade: p.rating.current_grade, rating_score: p.rating.current_numeric,
       ig_label: p.rating.status === 'rated' ? p.rating.ig_label : 'NR', maturity_date: f(p.maturity_date), fixed_floating: p.fixed_floating, spread_bps: p.margin_bps, remaining_years: p.remaining_years, maturity_bucket: p.maturity_bucket,
       excluded: p.excluded ? 'Y' : '', exclusion_reason: p.exclusionReason || '', flags: p.flags.join('|') }));
+  };
+
+  // =====================================================================================================================
+  // SETTINGS OUT: the settings in force, as data and as a ready-to-use "Scope Settings" sheet (see §1b)
+  // =====================================================================================================================
+  /**
+   * The settings in force for a result (app changes, Scope Settings sheet and §1 defaults merged), named by the workbook's
+   * own investor names so the sheet stays valid if display names change:
+   * { investors: [{ column, name, group, weight }], views: [{ view, components: '*' | 'group' | [{ column, weight }] | [] }],
+   *   lookThrough: [{ investor, fund, share }], fxException: [{ investor, currency, view, rate, note }], settings: [{ setting, value }] }
+   */
+  AUM.effectiveSettings = function (res) {
+    const d = (res && res.inputs) || {}, inv = d.investors || [];
+    const original = new Map(inv.map((i) => [i.label, i.original || i.label]));
+    const orig = (label) => original.get(label) || label;
+    const investors = inv.map((i) => ({ column: i.original || i.label, name: i.label !== (i.original || i.label) ? i.label : '', group: i.source === 'default' ? '' : i.group, weight: i.source === 'default' ? '' : i.weight }));
+    const views = (d.views || []).map((v) => ({ view: v.view, components: v.def === '*' || v.def === 'group' ? v.def : v.def === 'list' ? (v.composition || []).map((c) => ({ column: orig(c.label), weight: c.weight })) : v.def === 'column' ? null : [] })).filter((v) => v.components !== null);
+    const lookThrough = [];
+    for (const f of d.fundHolders || []) for (const [h, sh] of f.holders) lookThrough.push({ investor: orig(h), fund: orig(f.fund), share: sh });
+    const fxException = (d.fxException || []).map((x) => ({ investor: x.investor, currency: x.currency, view: x.view || '', rate: x.rate, note: x.note || '' }));
+    const cfg = (res && res.config) || {};
+    const quote = d.fx && d.fx.quote;
+    const settings = [
+      { setting: 'Attribution label', value: cfg.attribution_label || CONFIG.attributionLabel },
+      { setting: 'IG threshold', value: U.isNum(cfg.ig_threshold) ? cfg.ig_threshold : CONFIG.igThreshold },
+      { setting: 'Base currency', value: cfg.base_currency || CONFIG.baseCurrency },
+      { setting: 'FX quote', value: quote === 'eur_per_ccy' ? 'EUR per unit' : quote === 'ccy_per_eur' ? 'Units per EUR' : 'Auto' },
+      { setting: 'Single portfolio token', value: cfg.single_token || CONFIG.singleToken },
+      { setting: 'Maturity buckets', value: (cfg.buckets || CONFIG.maturityBuckets).join(', ') },
+    ];
+    return { investors, views, lookThrough, fxException, settings };
+  };
+
+  /**
+   * Lay settings (from effectiveSettings) out as the "Scope Settings" sheet: a note in B1, titles in row 2, headers in row 3,
+   * data from row 4; tables at B, G, K, O and U. Returns a grid { name, rows } for the workbook writer or CSV export.
+   */
+  AUM.settingsGrid = function (eff) {
+    const e = eff || { investors: [], views: [], lookThrough: [], fxException: [], settings: [] };
+    const rows = [];
+    /** Put a value at row r (0-based) and Excel column letter. */
+    const put = (r, letter, v) => { while (rows.length <= r) rows.push([]); rows[r][colIndex(letter)] = v === undefined ? null : v; };
+    /** One table: title in row 2, headers in row 3, records from row 4. */
+    const table = (letter, title, headers, records) => {
+      const c0 = colIndex(letter);
+      put(1, letter, title);
+      headers.forEach((h, k) => put(2, colName(c0 + k), h));
+      records.forEach((rec, i) => rec.forEach((v, k) => put(3 + i, colName(c0 + k), v === '' ? null : v)));
+    };
+    put(0, 'B', 'Scope Settings: names, groups and weights of investor columns, view definitions, fund look-through and the FX exception. Optional sheet; read by name.');
+    table('B', 'Investors', ['Investor Column', 'Display Name', 'Group', 'Attribution Weight'], e.investors.map((i) => [i.column, i.name || '', i.group || '', i.weight === '' || i.weight === undefined ? '' : i.weight]));
+    const viewRows = [];
+    for (const v of e.views) {
+      if (v.components === '*') viewRows.push([v.view, 'All investors', '']);
+      else if (v.components === 'group') viewRows.push([v.view, 'Group weights', '']);
+      else if (Array.isArray(v.components) && v.components.length) for (const c of v.components) viewRows.push([v.view, c.column, c.weight]);
+      else viewRows.push([v.view, '', '']);
+    }
+    table('G', 'Views', ['View', 'Investor Column', 'Weight'], viewRows);
+    table('K', 'Look Through', ['Investor', 'Fund', 'Share'], e.lookThrough.map((x) => [x.investor, x.fund, x.share]));
+    table('O', 'FX Exception', ['Investor', 'Currency', 'View', 'Rate', 'Note'], e.fxException.map((x) => [x.investor, x.currency, x.view, x.rate, x.note]));
+    table('U', 'Settings', ['Setting', 'Value'], e.settings.map((x) => [x.setting, x.value]));
+    return { name: SETTINGS_SHEET, rows };
   };
 
   AUM.colName = colName; AUM.colIndex = colIndex; AUM.cellRef = cellRef; AUM.norm = norm;

@@ -27,6 +27,8 @@
 
   /** The four workbook sheets the AUM inputs come from, in their canonical spelling. */
   IN.SHEETS = Object.freeze(['Holdings', 'Mapping', 'Hardcoded', 'ESG Hardcoded']);
+  // Optional sheets: read when present, never reported missing ('Scope Settings' holds names, groups, views, look-through).
+  IN.OPTIONAL_SHEETS = Object.freeze(['Scope Settings']);
 
   // ---------- Excel coordinates ----------
 
@@ -68,7 +70,7 @@
   /** Comparison form of a name: lower case without separators ('ESG_Hardcoded ' → 'esghardcoded'). */
   const normName = (s) => String(s).toLowerCase().replace(SEP_ALL, '');
   // Canonical names longest first, so a suffix match prefers 'ESG Hardcoded' over 'Hardcoded'.
-  const CANON = IN.SHEETS.map((name) => ({ name, key: normName(name) })).sort((a, b) => b.key.length - a.key.length);
+  const CANON = IN.SHEETS.concat(IN.OPTIONAL_SHEETS).map((name) => ({ name, key: normName(name) })).sort((a, b) => b.key.length - a.key.length);
   const TEXT_EXT = /\.(csv|tsv|tab|txt)$/i;
 
   /**

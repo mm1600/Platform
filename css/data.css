@@ -119,3 +119,96 @@ textarea.dp-code { min-height: 380px; background: var(--light); }
 /* ---- fund unit holders editor ---- */
 .dp-holders { display: flex; flex-direction: column; gap: .4rem; margin: .5rem 0; }
 .dp-holder .dp-select { min-width: 180px; }
+
+/* ---------- setup: Scope Settings card and numbered steps ---------- */
+.dp-page a.btn:hover { text-decoration: none; }
+.dp-intro-text { margin: 0 0 .65rem; max-width: 860px; color: var(--heading-color); }
+.dp-intro-status { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; font-size: .8125rem; margin-bottom: .85rem; }
+.dp-intro-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.dp-intro-note { margin: .6rem 0 0; }
+.dp-step.dp-step-attention { box-shadow: inset 3px 0 0 var(--warning), var(--card-shadow); }
+.dp-step-head { align-items: flex-start; }
+.dp-step-head h2 { color: var(--heading-color); font-size: .975rem; }
+.dp-step-titles { flex: 1; min-width: 0; }
+.dp-step-head .section-actions { flex: none; }
+.dp-step-num { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; margin-top: -2px;
+  border: 1px solid var(--border-color); border-radius: 2px; background: #fff; color: var(--muted); font-size: .8125rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.dp-step-done .dp-step-num { background: var(--primary); border-color: var(--primary); color: #fff; }
+.dp-step-attention .dp-step-num { background: rgba(252,185,44,.14); border-color: var(--warning); color: #7a4f00; }
+.dp-step-fig { margin: 0 0 .65rem; font-size: .875rem; color: var(--heading-color); }
+.dp-step-list { list-style: none; margin: 0 0 .85rem; padding: 0; font-size: .8125rem; }
+.dp-step-list li { padding: .2rem 0; }
+.dp-step-tools { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; margin-bottom: .75rem; }
+.dp-step-hint { margin: .6rem 0 0; }
+.dp-step-tools + .dp-step-hint { margin: -.25rem 0 .75rem; }
+.dp-step-wait { margin: 0; }
+.dp-step-help p { margin: 0 0 .4rem; font-size: .875rem; }
+.dp-step-notice { margin-bottom: .75rem; box-shadow: none; border: 1px solid var(--border-light); }
+.dp-step-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .4rem 1rem; margin-top: .85rem; padding-top: .75rem; border-top: 1px solid var(--border-light); font-size: .8125rem; }
+.dp-step-body > div > .notice:first-child { box-shadow: none; border-top: 1px solid var(--border-light); border-right: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); }
+@media (min-width: 768px) { .dp-step > .dp-step-body { padding-left: calc(1.25rem + 26px + 1rem); } }
+
+/* compact drop zone (step 1) and the list of sheets */
+.dp-drop.dp-drop-compact { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: .85rem 1rem; text-align: left; }
+.dp-drop-compact .dp-drop-icon { margin: 0; }
+.dp-drop-compact .dp-drop-icon .feather { width: 22px; height: 22px; }
+.dp-drop-compact .dp-drop-text { flex: 1; min-width: min(240px, 100%); }
+.dp-drop-compact .dp-drop-title { font-size: .9375rem; }
+.dp-drop-compact .dp-drop-sub { margin: .15rem 0 0; max-width: none; }
+.dp-sheetlist { display: grid; grid-template-columns: max-content max-content minmax(0, 1fr); align-items: baseline; gap: .4rem .75rem; margin-top: .9rem; font-size: .8125rem; }
+.dp-sheetlist .badge { justify-self: start; }
+.dp-sl-name { font-weight: 500; color: var(--heading-color); white-space: nowrap; }
+.dp-sl-src { color: var(--body-color); overflow-wrap: anywhere; }
+.dp-sl-tables { display: block; color: var(--muted); }
+.dp-sheet.dp-optional { box-shadow: inset 3px 0 0 var(--border-color), var(--card-shadow); }
+
+/* investors table (step 3) */
+.dp-inv-scroll, .dp-views-scroll { max-height: none; }
+.dp-inv th { cursor: default; }
+.dp-inv th:hover { color: var(--heading-color); }
+.dp-in { font-size: .8125rem; padding: .15rem .5rem; }
+.dp-in-name { width: 210px; max-width: 46vw; }
+.input.dp-changed { background-color: var(--manual-bg); border-color: #ecd59b; }
+.tbl tbody tr.dp-row-warn > td { background: rgba(252,185,44,.08); }
+.tbl tbody tr.dp-row-bad > td { background: rgba(220,53,69,.06); }
+.dp-views th { cursor: default; }
+.dp-views th:hover { color: var(--heading-color); }
+
+/* look-through grid (step 5): sticky investor column and fund header, scrolls inside the card */
+.dp-lt-wrap { overflow: auto; max-height: 70vh; border: 1px solid var(--border-color); background: #fff; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.dp-lt { border-collapse: separate; border-spacing: 0; min-width: 100%; font-size: .8125rem; color: var(--body-color); }
+.dp-lt th, .dp-lt td { padding: 0; border-right: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); white-space: nowrap; vertical-align: middle; }
+.dp-lt thead th { position: sticky; top: 0; z-index: 2; min-width: 96px; max-width: 170px; padding: .4rem .55rem; background: var(--light); color: var(--heading-color); font-weight: 600; text-align: right; vertical-align: bottom; white-space: normal; border-bottom: 1px solid var(--border-color); }
+.dp-lt .dp-lt-rowh { position: sticky; left: 0; z-index: 1; min-width: 180px; max-width: 250px; padding: .3rem .65rem; background: #fff; color: var(--heading-color); font-weight: 500; text-align: left; white-space: normal; border-right: 1px solid var(--border-color); }
+.dp-lt thead th.dp-lt-corner { z-index: 3; background: var(--light); text-align: left; }
+.dp-lt-sub { display: block; font-size: .75rem; font-weight: 400; color: var(--muted); }
+.dp-lt td { text-align: right; }
+.dp-lt td.dp-lt-has { background: var(--bnpp-mint); }
+.dp-lt td.dp-lt-self { background: repeating-linear-gradient(135deg, var(--light) 0 4px, #fff 4px 8px); }
+.dp-lt-cell { display: block; width: 100%; min-width: 88px; margin: 0; padding: .4rem .55rem; border: 0; border-radius: 0; background: transparent; color: var(--heading-color); font: inherit; font-variant-numeric: tabular-nums; text-align: right; }
+.dp-lt-cell:hover { background: rgba(0,0,0,.03); }
+.dp-lt-cell:focus { outline: 0; background: #fff; box-shadow: inset 0 0 0 2px var(--primary); }
+.dp-lt tbody tr:focus-within > .dp-lt-rowh { background: #f1f9f5; }
+.dp-lt-unknown .dp-lt-rowh { color: var(--muted); }
+.dp-lt tfoot th, .dp-lt tfoot td { padding: .35rem .55rem; background: var(--light); font-weight: 500; color: var(--heading-color); }
+.dp-lt tfoot .dp-lt-rowh { background: var(--light); font-weight: 600; }
+.dp-lt tfoot tr:first-child > * { border-top: 2px solid var(--border-color); }
+.dp-lt-check { display: inline-flex; align-items: center; gap: .3rem; font-variant-numeric: tabular-nums; }
+.dp-lt-src { display: inline-flex; align-items: center; gap: .2rem; }
+.dp-lt-src .btn { padding: .1rem .3rem; }
+.dp-neg { color: var(--danger) !important; font-weight: 600; }
+.dp-lt-notes { margin: .75rem 0 0; }
+.dp-check-sum { display: flex; flex-wrap: wrap; gap: .4rem 1.25rem; margin-bottom: .65rem; font-size: .875rem; color: var(--heading-color); }
+
+@media (max-width: 575px) {
+  .dp-sheetlist { grid-template-columns: max-content minmax(0, 1fr); }
+  .dp-sl-src { grid-column: 2; margin-bottom: .2rem; }
+  .dp-lt .dp-lt-rowh { min-width: 118px; max-width: 150px; padding: .3rem .5rem; }
+  .dp-lt thead th { min-width: 84px; }
+  .dp-lt-cell { min-width: 76px; }
+  .dp-in-name { width: 150px; }
+  .dp-inv .dp-inv-id { display: none; }
+  .dp-inv .dp-inv-name { position: sticky; left: 0; z-index: 1; background: #fff; max-width: 110px; white-space: normal; box-shadow: inset -1px 0 0 var(--border-light); }
+  .dp-inv thead .dp-inv-name { z-index: 3; }
+  .tbl tbody tr.dp-row-warn > td.dp-inv-name { background: #fffaf0; }
+}
