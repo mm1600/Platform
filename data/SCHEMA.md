@@ -77,6 +77,7 @@ Rules the workbook keeps inside Calculations and Output formulas are collected i
 
 - how each view in Mapping column H is composed (an investor column needs nothing; aggregates such as "Total platform" or a look-through column are defined there);
 - each investor column's group (group entity, fund, third party) and attribution weight;
+- who holds the units of each fund investor column, and what share (the fund look-through register: the sheets only carry the group's share of a fund);
 - the FX exception (one investor, one currency, one view, one rate);
 - the IG threshold, maturity buckets, display unit, spread unit and the illustrative concentration thresholds.
 

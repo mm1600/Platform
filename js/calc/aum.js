@@ -16,7 +16,7 @@
  *   §6  Ratings branch (internal unless NR, else worst agency; IG ≤ threshold)
  *   §7  FX: amounts ÷ rate (units per EUR), direction verified against the RC column
  *   §8  Hardcoded and ESG Hardcoded lookups per asset
- *   §9  Investor columns, asset × investor matrices, group attribution
+ *   §9  Investor columns, asset × investor matrices, group attribution, the fund look-through register
  *   §10 Views (the Output!G8 platform choices) and the Output rows
  *   §11 Portfolio metrics and distributions (exposure-weighted)
  *   §12 Checks: the workbook's own formula columns against this file's results
@@ -66,6 +66,13 @@
       'Investor 4': ['Group entity', 1], 'Investor 5': ['Group entity', 1], 'Investor 6': ['Group entity', 1],
       'Investor 7': ['Fund', 0.35], 'Investor 8': ['Fund', 0.2],
       'Investor 9': ['Third party', 0], 'Investor 10': ['Third party', 0], 'Investor 11': ['Third party', 0], 'Investor 12': ['Third party', 0],
+    },
+    // Fund look-through: who holds the units of each fund investor column, as shares of the fund (the remainder is
+    // held outside the platform). The four sheets carry only the group's share of a fund (the weight above), so the
+    // full register lives here. Group-entity holders' shares should add up to the fund's weight (checked).
+    fundHolders: {
+      'Investor 7': [['Investor 1', 0.15], ['Investor 3', 0.10], ['Investor 5', 0.10], ['Investor 9', 0.25]],
+      'Investor 8': [['Investor 2', 0.12], ['Investor 6', 0.08], ['Investor 10', 0.30]],
     },
     // The workbook's one FX exception, as data: positions of `investor` in `currency` use `rate` when `view` is selected.
     fxOverrides: [
@@ -572,6 +579,20 @@
     unmappedLabels.forEach((l) => investorMeta.set(l, { id: '', key: '', label: l, group: 'Unmapped', weight: 0, source: 'default' }));
     for (const p of positions) { const m = investorMeta.get(p.investor_label); p.investor_group = m ? m.group : 'Unmapped'; p.group_weight = m ? m.weight : 0; }
     const investorColumns = investorOrder.map((i) => i.label).concat(unmappedLabels);
+    // fund look-through register: settings (§1), with per-browser overrides replacing a fund's entry
+    const fundRegister = [], registerFunds = [];
+    const regSettings = CONFIG.fundHolders || {}, regOverrides = (ov.fundHolders || {});
+    for (const fund of U.uniq(Object.keys(regSettings).concat(Object.keys(regOverrides)))) {
+      const fromOverride = Object.prototype.hasOwnProperty.call(regOverrides, fund);
+      const holders = (fromOverride ? regOverrides[fund] : regSettings[fund]) || [];
+      if (!holders.length) continue;
+      if (!investorMeta.has(fund)) issue('info', 'Mapping', null, `Fund look-through: "${fund}" is not an investor column in Funding Name; its register is ignored`);
+      else for (const [holder, share] of holders) fundRegister.push({ fund_label: fund, holder_label: String(holder), share: +share, note: fromOverride ? 'override' : 'settings' });
+      registerFunds.push({ fund, holders: holders.map(([h, sh]) => [String(h), +sh]), source: fromOverride ? 'override' : 'settings', known: investorMeta.has(fund) });
+    }
+    const fundsWithoutRegister = investorOrder.filter((i) => /fund/i.test(i.group) && !registerFunds.some((f) => f.fund === i.label)).map((i) => i.label);
+    if (fundsWithoutRegister.length) issue('info', 'Mapping', null, `Fund look-through: no unit holders listed for ${fundsWithoutRegister.join(', ')}; their exposure is shown directly only. Add holders on Data › Views & investors`);
+    diag.fundHolders = registerFunds;
     diag.investors = investorOrder.map((i) => ({ id: i.id, label: i.label, fundName: i.fundName, group: i.group, weight: i.weight, source: i.source }));
 
     // ---------- §10 Views (Output!G8) ----------
@@ -749,7 +770,7 @@
       platform, platformId, platforms, investors, investorColumns, assets, positions, rows, metrics, distributions, issues, issueCounts: sev,
       stats: { holdingsRows: H ? H.g.rows.length - H.hr - 1 : 0, paddingRows, positions: positions.length, excluded: excludedPositions.length, included: positions.length - excludedPositions.length,
         assetsMapped: assets.length, assetsActive: assets.filter((a) => a.active).length, assetsSelected: rows.length, filteredOut: filteredOutCount, inView: positions.filter(inView).length },
-      excludedPositions, fatal, filtered: !!keepLines, inputs: diag,
+      excludedPositions, fatal, filtered: !!keepLines, inputs: diag, fundRegister,
     };
   };
   AUM.compute = AUM.run; // older callers

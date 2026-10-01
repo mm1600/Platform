@@ -62,7 +62,7 @@
     attributionLabel: 'name of the attributed investor group in labels',
     spreadUnit: 'bps, percent, or auto (values below 20 are read as percent)',
   };
-  const CONFIG_TITLES = { views: 'Views', investors: 'Investors', fxOverrides: 'FX exception', regions: 'Regions', thresholds: 'Concentration thresholds (illustrative)' };
+  const CONFIG_TITLES = { views: 'Views', investors: 'Investors', fundHolders: 'Fund unit holders (look-through)', fxOverrides: 'FX exception', regions: 'Regions', thresholds: 'Concentration thresholds (illustrative)' };
 
   // Page state that survives re-renders within the session.
   const state = { sev: 'all', issueSheet: 'all', open: new Set(), lastLoad: null, tab: null };
@@ -129,7 +129,7 @@
   /** Number of overrides saved in this browser (columns, views, investors, FX quote). */
   function countOverrides() {
     const ov = overrides();
-    return ['roles', 'views', 'investors'].reduce((n, k) => n + Object.keys(ov[k] || {}).length, 0) + (ov.fxQuote ? 1 : 0);
+    return ['roles', 'views', 'investors', 'fundHolders'].reduce((n, k) => n + Object.keys(ov[k] || {}).length, 0) + (ov.fxQuote ? 1 : 0);
   }
 
   /** Sheets still holding the synthetic demo that a load of `supplied` would leave in place. */
@@ -638,7 +638,76 @@
         { key: 'source', label: 'Source', render: (r) => h('div', { class: 'dp-row-actions dp-left' }, sourceBadge(r.source),
           r.source === 'override' ? h('button', { class: 'btn btn-sm btn-ghost', title: 'Back to the settings', onClick: () => { store.setOverride('investors', r.label, null); UI.toast(`${r.label}: back to the settings`); } }, ic('refresh-cw'), 'Reset') : null) },
       ] }) : UI.empty('No investor columns: the Funding Name table is empty') }));
+    el.appendChild(fundHoldersSection(D, attr));
     el.appendChild(fxSection(D));
+  }
+
+  /**
+   * Fund unit holders (the look-through register): for each fund investor column, who holds its units and what share.
+   * The remainder is held outside the platform. Group-entity holders' shares should equal the fund's attribution weight.
+   */
+  function fundHoldersSection(D, attr) {
+    const inv = D.investors || [], byLabel = new Map(inv.map((i) => [i.label, i]));
+    const reg = new Map((D.fundHolders || []).map((f) => [f.fund, f]));
+    const funds = U.uniq(inv.filter((i) => /fund/i.test(i.group)).map((i) => i.label).concat(Array.from(reg.keys())));
+    const rows = funds.map((fund) => {
+      const r = reg.get(fund), holders = r ? r.holders : [], listed = holders.reduce((s, x) => s + (+x[1] || 0), 0);
+      const groupHeld = holders.reduce((s, [hl, sh]) => s + ((byLabel.get(hl) || {}).weight || 0) * (+sh || 0), 0);
+      const weight = (byLabel.get(fund) || {}).weight;
+      return { fund, holders, listed, external: 1 - listed, groupHeld, weight, consistent: !holders.length || !U.isNum(weight) || Math.abs(groupHeld - weight) < 1e-6, source: r ? r.source : 'none', known: r ? r.known : byLabel.has(fund) };
+    });
+    const pctx = (v) => (U.isNum(v) ? F.pct(v, 1) : '–');
+    return UI.section({ title: 'Fund unit holders (look-through)', subtitle: `who holds the units of each fund investor column, as a share of the fund; the rest is held outside the platform. ${attr}-entity holders' shares should add up to the fund's weight. Drives the investor pages' look-through and the investor book's ultimate holders`,
+      body: rows.length ? UI.table({ rows, compact: true, filter: false, pageSize: 200, columns: [
+        { key: 'fund', label: 'Fund column', class: 'strong' },
+        { key: 'holders', label: 'Unit holders', class: 'wrap', render: (r) => h('span', {}, r.holders.length ? r.holders.map(([hl, sh]) => `${hl} ${pctx(+sh)}`).join(' · ') : h('span', { class: 'muted' }, 'none listed: shown directly only')) },
+        { key: 'listed', label: 'Listed', align: 'right', format: pctx },
+        { key: 'external', label: 'Outside the platform', align: 'right', format: (v, r) => (r.holders.length ? pctx(v) : '–') },
+        { key: 'groupHeld', label: `${attr} share vs weight`, align: 'right', render: (r) => h('span', {}, r.holders.length ? `${pctx(r.groupHeld)} / ${pctx(r.weight)} ` : '–', r.holders.length ? UI.badge(r.consistent ? 'OK' : 'Differs', r.consistent ? 'ok' : 'warn', r.consistent ? 'matches the attribution weight' : `the ${attr}-entity holders' shares differ from this fund's weight`) : null) },
+        { key: 'source', label: 'Source', render: (r) => h('div', { class: 'dp-row-actions dp-left' }, r.source === 'override' ? UI.badge('changed here', 'manual', 'saved in this browser') : r.source === 'settings' ? UI.badge('settings', 'muted', 'CONFIG.fundHolders in the calculation file') : UI.badge('not set', 'warn', 'no register: direct only'),
+          h('button', { class: 'btn btn-sm', onClick: () => editFundHolders(r.fund, r.holders, inv) }, ic('edit-2'), 'Edit'),
+          r.source === 'override' ? h('button', { class: 'btn btn-sm btn-ghost', title: 'Back to the settings', onClick: () => { store.setOverride('fundHolders', r.fund, null); UI.toast(`${r.fund}: register back to the settings`); } }, ic('refresh-cw'), 'Reset') : null) },
+      ] }) : UI.empty('No fund investor columns. Set an investor\'s group to "Fund" above to list its unit holders.') });
+  }
+
+  /** Edit one fund's unit holders: a row per holder (investor column) with its share of the fund's units. */
+  function editFundHolders(fund, holders, inv) {
+    const labels = inv.map((i) => i.label).filter((l) => l !== fund);
+    const list = h('div', { class: 'dp-holders' });
+    const total = h('p', { class: 'small' });
+    /** Recompute the listed share and the remainder shown under the rows. */
+    const refresh = () => {
+      let t = 0; for (const row of list.querySelectorAll('.dp-holder')) { const v = Number(String(row.querySelector('input').value).replace(',', '.')); if (isFinite(v)) t += v; }
+      total.textContent = `Listed ${F.pct(t, 1)} · held outside the platform ${F.pct(1 - t, 1)}${t > 1 + 1e-9 ? ' · more than 100%: check the shares' : ''}`;
+    };
+    /** One editable holder row. */
+    const addRow = (holder, share) => {
+      const sel = h('select', { class: 'input dp-select', 'aria-label': 'Holder' }, U.uniq(labels.concat(holder ? [holder] : [])).map((l) => h('option', { value: l, selected: l === holder }, l)));
+      const inp = h('input', { type: 'number', step: '0.01', min: '0', max: '1', class: 'input dp-num', value: share === undefined ? '' : fmtW(share), 'aria-label': 'Share of the fund', onInput: refresh });
+      const row = h('div', { class: 'dp-holder dp-field-row' }, sel, inp, h('span', { class: 'small muted' }, 'share (0.15 = 15%)'),
+        h('button', { class: 'btn btn-sm btn-ghost', 'aria-label': 'Remove holder', onClick: () => { row.remove(); refresh(); } }, ic('x')));
+      list.appendChild(row);
+    };
+    (holders.length ? holders : [[labels[0], '']]).forEach(([hl, sh]) => addRow(hl, sh === '' ? undefined : +sh));
+    refresh();
+    const m = UI.modal({ title: `Unit holders of ${fund}`, body: h('div', {},
+      h('p', { class: 'small muted' }, 'Each row is an investor column holding units of this fund, with its share of the fund. Whatever is not listed is held outside the platform. Changes are saved in this browser; Export settings makes them permanent.'),
+      list, h('button', { class: 'btn btn-sm', onClick: () => { addRow(labels[0], undefined); refresh(); } }, ic('plus'), 'Add holder'), total),
+      actions: [
+        h('button', { class: 'btn', onClick: () => m.close() }, 'Cancel'),
+        h('button', { class: 'btn btn-primary', onClick: () => {
+          const out = [];
+          for (const row of list.querySelectorAll('.dp-holder')) {
+            const hl = row.querySelector('select').value, v = Number(String(row.querySelector('input').value).replace(',', '.'));
+            if (!hl) continue;
+            if (!isFinite(v) || v < 0) { UI.toast(`Enter a share between 0 and 1 for ${hl}`, 'warn'); return; }
+            if (v > 0) out.push([hl, v]);
+          }
+          const base = (cfg().fundHolders || {})[fund];
+          const same = base && JSON.stringify(base.map(([a, b]) => [String(a), +b])) === JSON.stringify(out);
+          store.setOverride('fundHolders', fund, same ? null : out);
+          m.close(); UI.toast(`${fund}: ${out.length} unit holder${out.length === 1 ? '' : 's'} saved`);
+        } }, 'Save')] });
   }
 
   /** Save an investor's group and weight; matching the settings again removes the override. */
@@ -724,7 +793,7 @@
   /** Banner for the override tabs: changes apply at once in this browser; export them as a CONFIG snippet or clear them. */
   function overridesBar() {
     const ov = overrides(), n = countOverrides();
-    const parts = [['roles', 'column'], ['views', 'view'], ['investors', 'investor']].map(([k, w]) => { const c = Object.keys(ov[k] || {}).length; return c ? plural(c, w) : null; }).filter(Boolean);
+    const parts = [['roles', 'column'], ['views', 'view'], ['investors', 'investor'], ['fundHolders', 'fund register']].map(([k, w]) => { const c = Object.keys(ov[k] || {}).length; return c ? plural(c, w) : null; }).filter(Boolean);
     if (ov.fxQuote) parts.push('FX quote');
     return h('div', { class: 'notice info dp-bar' },
       h('div', {}, h('b', {}, 'Changes here apply at once and are saved in this browser only. '), n ? `In force: ${parts.join(', ')}. ` : 'No overrides in force. ', 'Export settings to make them permanent in the calculation file.'),
@@ -773,6 +842,7 @@
     };
     block('views', C.views, ov.views);
     block('investors', C.investors, ov.investors);
+    block('fundHolders', C.fundHolders, ov.fundHolders);
     const roles = Object.entries(ov.roles || {});
     if (roles.length) {
       out.push('');

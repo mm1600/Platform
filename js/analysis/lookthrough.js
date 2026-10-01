@@ -1,5 +1,6 @@
 /* Scope engine: fund look-through.
- * Pure function of (AUM engine result, fund_lookthrough.csv rows) → who economically owns each asset. No DOM; runs in Node.
+ * Pure function of (AUM result, fund unit register rows) → who economically owns each asset. The register (fund, holder, share)
+ * comes from §1 fundHolders in js/calc/aum.js, with per-browser overrides on Data › Views & investors. No DOM; runs in Node.
  *
  *   Scope.engine.lookthrough.compute(res, ltRows) → {
  *     available,                     true when at least one valid look-through row was read
@@ -18,7 +19,7 @@
  *
  * Rules
  *   - Direct exposure D(X, A) is investor column X's amount in asset A.
- *   - A fund F with rows in fund_lookthrough.csv is a pass-through: its holders H own share(F, H) of it, the residual
+ *   - A fund F with rows in the register is a pass-through: its holders H own share(F, H) of it, the residual
  *     1 − Σ shares is owned by holders outside the platform ("External fund holders").
  *   - Economic exposure T(X, A) = D(X, A) + Σ_F share(F, X) × T(F, A); indirect = T − D. A fund holding units of another
  *     fund is supported by propagating to a fixed point, capped at MAX_DEPTH levels (cycles are reported, never looped).
@@ -39,7 +40,7 @@
   LT.MEASURES = MEASURES;
   LT.MAX_DEPTH = 5;
   LT.EXTERNAL_LABEL = 'External fund holders';
-  LT.TABLE = 'fund_lookthrough.csv';
+  LT.TABLE = 'fund unit register'; // label used in messages; the register is §1 fundHolders in js/calc/aum.js (+ Data page overrides)
   /** Page modes: which part of the economic exposure a view shows. key = the amount field on perAsset / byInvestor. */
   LT.MODES = [
     { id: 'direct', label: 'Direct', key: 'direct' },
@@ -110,7 +111,7 @@
       else m.set(holder, { share, note: str(r.note), lines: [line] });
     });
     const available = shareMap.size > 0;
-    if (!rows.length) issue('info', `${LT.TABLE} not loaded: exposures are direct only and funds are shown as holders in their own right`);
+    if (!rows.length) issue('info', `No ${LT.TABLE}: exposures are direct only and funds are shown as holders in their own right`);
     else if (!available) issue('warn', `${LT.TABLE} has no usable rows: exposures are direct only`);
 
     const fundLabels = Array.from(shareMap.keys());

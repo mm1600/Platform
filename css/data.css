@@ -115,3 +115,7 @@ textarea.dp-code { min-height: 380px; background: var(--light); }
   .dp-drop { padding: 1.5rem 1rem; }
   .dp-select { max-width: 220px; }
 }
+
+/* ---- fund unit holders editor ---- */
+.dp-holders { display: flex; flex-direction: column; gap: .4rem; margin: .5rem 0; }
+.dp-holder .dp-select { min-width: 180px; }

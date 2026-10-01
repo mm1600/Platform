@@ -9,7 +9,7 @@
   /** Link to the per-investor page; stops the row click so the link wins. */
   const investorLink = (label) => h('a', { href: Scope.href('investor', label), onClick: (e) => e.stopPropagation() }, label);
 
-  /** Holders × funds share matrix with listed / external / consistency rows (fund_lookthrough.csv). */
+  /** Holders × funds share matrix with listed / external / consistency rows (the fund unit register). */
   function shareMatrix(lt, L) {
     const funds = lt.funds;
     const holders = [];
@@ -82,10 +82,10 @@
       // ---------- fund look-through ----------
       const LTE = Scope.engine.lookthrough;
       if (LTE) {
-        const lt = LTE.compute(res, Scope.store ? Scope.store.table(LTE.TABLE) : []);
+        const lt = LTE.compute(res, res.fundRegister || []); // register: js/calc/aum.js §1 fundHolders (+ Data page overrides)
         const synthetic = /synthetic/i.test(res.config.dataset_label || '');
         if (!lt.available) {
-          el.appendChild(UI.section({ title: 'Look-through', subtitle: 'who owns the units of each fund column', body: h('div', { class: 'notice info iv-notice' }, `No fund look-through table loaded (${LTE.TABLE}): exposures are direct only and funds count as holders in their own right. `, h('a', { href: Scope.href('data') }, 'Load it on the Data page'), '.') }));
+          el.appendChild(UI.section({ title: 'Look-through', subtitle: 'who owns the units of each fund column', body: h('div', { class: 'notice info iv-notice' }, 'No fund unit holders are listed, so exposures are direct only and funds count as holders in their own right. ', h('a', { href: Scope.href('data', 'views') }, 'List them on Data › Views & investors'), '.') }));
         } else {
           const problems = lt.issues.filter((i) => i.severity !== 'info');
           const rec = LTE.reconcile(lt, assets.map((a) => a.code), measure);
@@ -93,7 +93,7 @@
           recRows.push({ label: LTE.EXTERNAL_LABEL, key: '', group: 'External', role: 'Outside the platform', isFund: false, external: true, direct_m: 0, indirect_m: rec.external / unit, total_m: rec.external / unit });
           // two full-width cards: the share matrix, then exposure by investor with the reconciliation line
           el.append(
-            UI.section({ title: 'Look-through · fund unit holders', subtitle: `${synthetic ? 'synthetic demo register · ' : ''}${LTE.TABLE} · share of each fund's units · the external row is held outside the platform`,
+            UI.section({ title: 'Look-through · fund unit holders', subtitle: `${synthetic ? 'synthetic demo register · ' : ''}fund unit register (Data › Views & investors) · share of each fund's units · the external row is held outside the platform`,
               body: h('div', {}, shareMatrix(lt, L), problems.length ? h('div', { class: 'notice iv-notice' + (problems.some((i) => i.severity === 'error') ? ' error' : '') }, h('ul', { class: 'iv-issue-list' }, problems.map((i) => h('li', {}, UI.badge(i.severity, i.severity === 'error' ? 'error' : 'warn'), ' ', i.message)))) : null) }),
             UI.section({ title: `Look-through · ${measure} by investor`, subtitle: `${ccy}m · ${state.scope === 'platform' ? `assets on ${res.platform.label}` : 'all active assets'} · direct column + share × fund exposure`,
               body: h('div', {},

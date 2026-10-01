@@ -71,7 +71,7 @@ Where the money is concentrated: a world map of exposure by country, a treemap b
 
 - **Investor book.** The asset × investor matrix for nominal, drawn or commitment, investor summaries, and the split between the attributed group and third parties.
 - **Investor pages.** One page per investor with direct exposure, look-through exposure via funds, and total economic exposure. Breakdowns by sector, country, rating and maturity, plus a holdings table showing which fund each indirect exposure comes through.
-- **Look-through.** The four sheets hold no fund unit register, so look-through is off by default. When a register of who holds each fund's units is supplied, fund investor columns are traced to their unit holders. Totals are checked so that ultimate holders plus external fund holders reconcile to the platform total, with no double counting.
+- **Look-through.** Fund investor columns are traced to whoever holds their units, so an investor sees its direct exposure, its share of each fund's assets, and the total. Who holds each fund's units is not in the four sheets (they only carry the group's share of a fund), so the register sits with the other settings in §1 of `js/calc/aum.js` and is edited on **Data › Views & investors**. Ultimate holders plus holders outside the platform always reconcile to the platform total, with no double counting, and the group entities' shares are checked against each fund's attribution weight.
 
 ### Asset pages
 
@@ -97,7 +97,7 @@ All AUM calculations sit in **one file, `js/calc/aum.js`**, which reads top to b
 
 | Section | What it does | Workbook equivalent |
 |---|---|---|
-| §1 Settings | views, investor groups and attribution weights, the FX exception, IG threshold, buckets, thresholds | header-row weights and constants inside Calculations / Output formulas |
+| §1 Settings | views, investor groups and attribution weights, fund unit holders (look-through), the FX exception, IG threshold, buckets, thresholds | header-row weights and constants inside Calculations / Output formulas |
 | §2 Inputs | where each input lives: the column roles, matched by output name (row 2) or header (row 3) | Holdings row 2 / row 3 |
 | §3 Reading | find each sheet's header row; locate the six Mapping tables by title | — |
 | §4 Mapping lookups | References, Active Assets, Security Mapping, Funding Name, Investment Grade, Fund Check | Mapping C:D, H:M, P:U, Y:AA, AC:AE, AH:AI |
@@ -126,7 +126,7 @@ js/calc/
 js/analysis/
   dataset.js             flat records and field registry over the results (every raw sheet column included)
   pivot.js               cross-tab aggregation, filters, Top N, % of total, export
-  lookthrough.js         fund look-through to ultimate holders (when a unit register is supplied)
+  lookthrough.js         fund look-through to ultimate holders (register: §1 fundHolders)
 js/core/
   store.js               the four sheets, settings, global filters, overrides, corrections, cached results
   filters.js             global filters and global search
@@ -192,6 +192,7 @@ These are settings (§1 of `js/calc/aum.js`, with per-browser overrides on **Dat
 | FX direction | auto-checked against the RC column; override on Data › Views & investors |
 | How each view in Mapping column H is composed | §1 `views`; override per view |
 | Investor groups and attribution weights | §1 `investors`; override per investor |
+| Who holds each fund's units (look-through) | §1 `fundHolders`; override per fund on Data › Views & investors |
 | The FX exception | §1 `fxOverrides` |
 | Rating convention and IG threshold | Mapping Investment Grade table; §1 `igThreshold` |
 | Maturity buckets, display unit, spread unit, concentration thresholds | §1 |

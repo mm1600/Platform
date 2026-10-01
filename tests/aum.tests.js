@@ -201,6 +201,19 @@
     assert(/^Hardcoded![A-Z]+\d+$/.test(Object.values(a.sheets.Hardcoded)[0].cell), 'hardcoded cell');
   });
 
+  add('fund look-through register: from §1 settings, a Data-page override replaces one fund, an empty list switches it off', () => {
+    const r = demo();
+    assert(r.fundRegister.length === 7 && r.fundRegister.every((x) => x.note === 'settings'), 'seven demo rows from settings');
+    const o = demo({ overrides: { fundHolders: { 'Investor 7': [['Investor 2', 0.35]] } } });
+    const f7 = o.fundRegister.filter((x) => x.fund_label === 'Investor 7');
+    assert(f7.length === 1 && f7[0].holder_label === 'Investor 2' && f7[0].note === 'override', 'override replaces the fund entry');
+    assert(o.fundRegister.filter((x) => x.fund_label === 'Investor 8').length === 3, 'other fund unchanged');
+    const off = demo({ overrides: { fundHolders: { 'Investor 7': [], 'Investor 8': [] } } });
+    assert(off.fundRegister.length === 0 && off.issues.some((i) => /no unit holders listed/.test(i.message)), 'empty lists switch look-through off with a notice');
+    const lt = Scope.engine.lookthrough;
+    if (lt) assert(lt.compute(r, r.fundRegister).available && lt.compute(r, r.fundRegister).reconciles, 'look-through available and reconciling on the demo');
+  });
+
   add('exports and subsets reconcile with the totals', () => {
     const r = demo();
     close(AUM.outputRecords(r).reduce((s, o) => s + o.exposure_m, 0), r.metrics.total_exposure_m, 1e-6, 'Output export');

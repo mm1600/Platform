@@ -1,5 +1,5 @@
 /* Module: Layer 1 · Investor page (#/investor/<label>) — one investor's direct, look-through and total exposure.
- * Figures come from Scope.engine.lookthrough (fund unit registers in fund_lookthrough.csv) and AUM.summarise;
+ * Figures come from Scope.engine.lookthrough (the fund unit register: js/calc/aum.js §1 fundHolders, overridable on Data › Views & investors) and AUM.summarise;
  * the page only formats them. Global filters are already applied to ctx.result. */
 (function (global) {
   'use strict';
@@ -84,7 +84,7 @@
       const LT = Scope.engine.lookthrough;
       const back = h('a', { href: Scope.href('investors') }, Scope.icon('arrow-left', { size: 13 }), ' Investor book');
       if (!LT) { el.appendChild(h('div', { class: 'notice error' }, 'The look-through engine (js/engine/lookthrough.js) is not loaded.')); return; }
-      const lt = LT.compute(res, Scope.store ? Scope.store.table(LT.TABLE) : []);
+      const lt = LT.compute(res, res.fundRegister || []); // register: js/calc/aum.js §1 fundHolders (+ Data page overrides)
       const inv = lt.byInvestor.get(label);
       // the shell keeps the scroll position within one module; moving to another investor starts at the top
       if (state.lastLabel !== null && state.lastLabel !== label) { const main = document.querySelector('.main'); if (main) main.scrollTop = 0; }
@@ -131,7 +131,7 @@
       // ---------- notices ----------
       const gf = res.globalFilters || [];
       if (gf.length) el.appendChild(h('div', { class: 'notice info iv-notice' }, h('b', {}, 'Global filters apply: '), describeFilters(gf).join(' · '), '. Every figure covers the filtered positions only, including the funds behind look-through exposure.'));
-      if (!lt.available) el.appendChild(h('div', { class: 'notice info iv-notice' }, `No fund look-through table loaded (${LT.TABLE}): figures are direct only. `, h('a', { href: Scope.href('data') }, 'Load it on the Data page'), '.'));
+      if (!lt.available) el.appendChild(h('div', { class: 'notice info iv-notice' }, 'No fund unit holders are listed, so figures are direct only. ', h('a', { href: Scope.href('data', 'views') }, 'List them on Data › Views & investors'), '.'));
       const issues = issuesNotice(lt); if (issues) el.appendChild(issues);
 
       // ---------- KPIs ----------
@@ -182,7 +182,7 @@
         const check = h('div', { class: 'iv-check' }, `${L} share from holders (Σ share × holder ${L} weight) `, h('b', {}, F.pct(fund.groupShareFromHolders)),
           ' vs group_weight ', h('b', {}, F.pct(fund.groupWeight)), ' ', fund.consistent ? UI.badge('Consistent', 'ok') : UI.badge('Mismatch', 'warn', `${L} attribution keeps using group_weight`));
         el.appendChild(UI.section({
-          title: 'Unit holders', subtitle: `${synthetic ? 'synthetic demo register · ' : ''}${LT.TABLE} · amounts = share × this fund's ${basis} exposure`,
+          title: 'Unit holders', subtitle: `${synthetic ? 'synthetic demo register · ' : ''}fund unit register · amounts = share × this fund's ${basis} exposure`,
           body: h('div', { class: 'iv-holders' },
             h('div', {}, UI.table({ rows: holderRows, filter: false, compact: true, onRow: (r) => { if (r.kind !== 'external') Scope.navigate('investor', r.holder_label); }, columns: [
               { key: 'holder_label', label: 'Holder', render: (r) => investorLink(r.holder_label) }, { key: 'holder_group', label: 'Group' },

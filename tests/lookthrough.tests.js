@@ -10,12 +10,8 @@
   const MEASURES = ['nominal', 'drawn', 'commitment'];
   const HEAD = 'fund_label,holder_label,share,note\n';
   let cached = null;
-  // The four input sheets carry no fund unit register, so the look-through table is defined here (synthetic):
-  // Group-entity holders of each fund hold exactly the fund's group weight (0.35 and 0.20).
-  const REGISTER = HEAD + ['Investor 7,Investor 1,0.15,Group entity units', 'Investor 7,Investor 3,0.1,Group entity units', 'Investor 7,Investor 5,0.1,Group entity units', 'Investor 7,Investor 9,0.25,Third-party units',
-    'Investor 8,Investor 2,0.12,Group entity units', 'Investor 8,Investor 6,0.08,Group entity units', 'Investor 8,Investor 10,0.3,Third-party units'].join('\n') + '\n';
-  /** Demo result (Total platform, EUR) plus the register rows. */
-  const demo = () => { if (!cached) cached = { res: T.demo(), rows: rowsOf(REGISTER) }; return cached; };
+  /** Demo result (Total platform, EUR) and its fund unit register (js/calc/aum.js §1 fundHolders). */
+  const demo = () => { if (!cached) { const res = T.demo(); cached = { res, rows: res.fundRegister }; } return cached; };
   /** Parse a look-through CSV text into records, as the store would. */
   const rowsOf = (text) => Scope.csv.parse(text).records.filter(Boolean);
   const nom = (a, label) => ((a.byInvestor.get(label) || { nominal: 0 }).nominal);
