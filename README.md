@@ -2,7 +2,7 @@
 
 **An infrastructure-debt portfolio platform that runs in any web browser.**
 
-Scope replaces a spreadsheet-based AUM workbook with a connected, auditable web tool. It reads the same inputs as the workbook (exported as CSV files), reproduces its calculations, and lets a portfolio manager slice the book any way they need: by asset, investor, platform, sector, country, rating, maturity, currency, ESG and more, with every figure traceable back to the line of input that produced it.
+Scope replaces a spreadsheet-based AUM workbook with a connected, auditable web tool. It reads the same four input sheets as the workbook (Holdings, Mapping, Hardcoded, ESG Hardcoded: drop the workbook or paste the sheets), reproduces its calculations, and lets a portfolio manager slice the book any way they need: by asset, investor, platform, sector, country, rating, maturity, currency, ESG and more, with every figure traceable back to the line of input that produced it.
 
 It is plain HTML, CSS and JavaScript. There is nothing to install, no build step and no package manager. It works offline.
 
@@ -44,12 +44,12 @@ The sidebar follows the six business layers of the platform, from pipeline to re
 | 2 Monitoring | Borrower reporting, Covenants, KPIs, Watchlist, Valuations, Comparables | planned |
 | 3 Outputs | Investor reporting, Post-trade guidelines, Custom views | planned |
 
-### The top bar: platform, currency, search and filters
+### The top bar: view, currency, search and filters
 
-- **Platform** selects which combination of investor columns counts as "exposure", exactly like the platform selector cell in the workbook's Output sheet.
-- **Currency** converts every amount for display.
-- **Search** (press `/` anywhere) finds assets, investors, sponsors, holding IDs, sectors, countries, ratings and pages. Choosing a value such as a country applies it as a filter. Choosing an asset or investor opens its page.
-- **Filters** apply to every page at once. Add as many as you like and they combine: for example *fixed rate*, then *Germany or the Netherlands*, then *investment grade*, then *maturing after 2030*. Any field can be filtered: asset attributes, position terms, ratings, ESG data, investor, derived bands, and numeric ranges on any amount. The value picker shows only values still available under the other filters, with position counts and exposure, like Excel's AutoFilter. Filter sets can be saved and reloaded. Every KPI, chart, table and export on every page reflects the same filtered book.
+- **View** lists the choices in Mapping column H (Views: portfolios / investors), exactly like the selector cell in the workbook's Output sheet. A view is either an investor column or a combination defined in the calculation file's settings.
+- **Currency** converts every amount for display, using the FX rates found in Holdings.
+- **Search** (press `/` anywhere) finds assets, investors, sponsors, security IDs, sectors, countries, ratings and pages. Choosing a value such as a country applies it as a filter. Choosing an asset or investor opens its page.
+- **Filters** apply to every page at once. Add as many as you like and they combine: for example *fixed rate*, then *Germany or the Netherlands*, then *investment grade*, then *maturing after 2030*. Any field can be filtered, including every raw column of the four sheets (e.g. a covenant status in Holdings or a jurisdiction tier in Hardcoded) and numeric ranges on any amount or ratio. The value picker shows only values still available under the other filters, with position counts and exposure, like Excel's AutoFilter. Filter sets can be saved and reloaded. Every KPI, chart, table and export on every page reflects the same filtered book.
 
 ### AUM overview
 
@@ -65,13 +65,13 @@ The Excel replacement for "any view of the book".
 
 ### Concentration & risk
 
-Where the money is concentrated: a world map of exposure by country, a treemap by sector and asset, a heatmap of any two dimensions (rating × maturity by default), a Pareto chart of the largest exposures with cumulative share, a maturity ladder by year, sponsor and currency concentration, and concentration measures (largest names, top-10 share, Herfindahl index and effective number of names by asset, sector and country). An illustrative threshold table compares these measures with values from `config.csv`. Those thresholds are examples, not mandate limits. Clicking the map, treemap or heatmap filters the whole app.
+Where the money is concentrated: a world map of exposure by country, a treemap by sector and asset, a heatmap of any two dimensions (rating × maturity by default), a Pareto chart of the largest exposures with cumulative share, a maturity ladder by year, sponsor and currency concentration, and concentration measures (largest names, top-10 share, Herfindahl index and effective number of names by asset, sector and country). An illustrative threshold table compares these measures with values set in §1 of `js/calc/aum.js`. Those thresholds are examples, not mandate limits. Clicking the map, treemap or heatmap filters the whole app.
 
 ### Investors and fund look-through
 
 - **Investor book.** The asset × investor matrix for nominal, drawn or commitment, investor summaries, and the split between the attributed group and third parties.
 - **Investor pages.** One page per investor with direct exposure, look-through exposure via funds, and total economic exposure. Breakdowns by sector, country, rating and maturity, plus a holdings table showing which fund each indirect exposure comes through.
-- **Look-through.** When `fund_lookthrough.csv` is supplied, fund investor columns are traced to their unit holders. Totals are checked so that ultimate holders plus external fund holders reconcile to the platform total, with no double counting.
+- **Look-through.** The four sheets hold no fund unit register, so look-through is off by default. When a register of who holds each fund's units is supplied, fund investor columns are traced to their unit holders. Totals are checked so that ultimate holders plus external fund holders reconcile to the platform total, with no double counting.
 
 ### Asset pages
 
@@ -79,102 +79,89 @@ Every asset shows its positions by investor, deal attributes, credit terms, rati
 
 ### Data & validation
 
-Load your own CSV files by drag and drop, see how source columns map to the model, review validation issues, review and revert manual adjustments, and inspect every configuration table. Nothing is silently zeroed. An unmapped holding, unknown investor, missing FX rate or unreadable amount becomes an issue, and positions that cannot be valued are excluded and listed rather than shown as zero.
-
----
+Load the four sheets (drop the workbook, drop CSVs, or paste from Excel) and see exactly how they were read: the header row found in each sheet, which column feeds each input (with an override per input), where each of the six Mapping tables was found, how each view and investor column is defined (editable), the FX direction check, and the **workbook checks**: the workbook's own formula columns (Holdings B–F and row 2, Hardcoded D–E) recomputed and compared cell by cell. On the demo every check matches 100%. Issues, corrections and the calculation settings are on the same page. Nothing is silently zeroed: a position that cannot be valued is excluded and listed with its reason.
 
 ## Using your own data
 
-1. Export each sheet of the workbook to CSV with the file names listed in [`data/SCHEMA.md`](data/SCHEMA.md): `holdings.csv`, `mapping_columns.csv`, `mapping_assets.csv`, `mapping_investors.csv`, `platforms.csv`, `ratings.csv`, `fx.csv`, `hardcoded.csv`, `esg.csv`, `config.csv`, and optionally `fund_lookthrough.csv`.
-2. Open **Data & validation** and drop the files onto the page. A file replaces the table with the same name. Other tables are kept.
-3. Review the **Issues** tab.
+1. Open **Data & validation** and drop the AUM workbook (`.xlsx` / `.xlsm`), or drop the four sheets as CSV files named after the sheets, or paste each sheet copied from Excel.
+2. Check **Columns** (every input resolved?), **Views & investors** (are the views in Mapping column H all defined? are investor groups and weights right?) and **Checks** (do the workbook's own formulas match?).
+3. Review **Issues**.
 
-`mapping_columns.csv` renames the source extract's headers, so the holdings export can keep the source system's own column names. Loaded files stay in that browser only (local storage) until you reset to the demo. Nothing is uploaded anywhere.
+The sheet layouts are described in [`data/SCHEMA.md`](data/SCHEMA.md), and synthetic examples of all four sheets are in `data/demo/` (`Scope-demo.xlsx` plus one CSV per sheet). A loaded workbook stays in that browser (IndexedDB) until you reset to the demo. Nothing is uploaded anywhere.
 
-To regenerate the synthetic demo data: `node tools/gen-demo.js` (deterministic).
-
----
+To regenerate the synthetic demo workbook: `node tools/gen-demo.js` (deterministic). To inspect any workbook from the command line: `node tools/xlsx-check.js file.xlsx`.
 
 ## How the calculations work
 
-The engine in `js/engine/aum.js` is a pure function from input tables to results. It also runs in Node for testing. It follows the workbook's logic:
+All AUM calculations sit in **one file, `js/calc/aum.js`**, which reads top to bottom in the same order as the workbook. It is a pure function from the four sheets to the results, so it also runs in Node for testing, and every number keeps the cell it came from (e.g. `Holdings!AK57`).
 
-| Workbook | Scope |
-|---|---|
-| Holdings extract and header renames | `holdings.csv` + `mapping_columns.csv` → canonical positions |
-| Position key (investor × holding), the "SINGLE" portfolio rule | position key, `config.single_portfolio_token` |
-| Holding → asset code, investor ID → investor label | `mapping_assets.csv`, `mapping_investors.csv` |
-| Hardcoded and ESG lookups | `hardcoded.csv`, `esg.csv`, keyed by asset code |
-| Rating branch and IG threshold | `ratings.csv`, `config.ig_threshold` |
-| FX table and its one hard-coded exception | `fx.csv` standard rows plus override rows by investor and platform |
-| Asset × investor matrices, inclusion weights, look-through columns | investor columns, `mapping_investors.group_weight`, `platforms.csv` compositions |
-| Output platform and currency selectors, asset rows | top-bar selectors, AUM overview, Output CSV |
-| Portfolio totals, weighted metrics, category shares | `AUM.summarise()` |
+| Section | What it does | Workbook equivalent |
+|---|---|---|
+| §1 Settings | views, investor groups and attribution weights, the FX exception, IG threshold, buckets, thresholds | header-row weights and constants inside Calculations / Output formulas |
+| §2 Inputs | where each input lives: the column roles, matched by output name (row 2) or header (row 3) | Holdings row 2 / row 3 |
+| §3 Reading | find each sheet's header row; locate the six Mapping tables by title | — |
+| §4 Mapping lookups | References, Active Assets, Security Mapping, Funding Name, Investment Grade, Fund Check | Mapping C:D, H:M, P:U, Y:AA, AC:AE, AH:AI |
+| §5 Holdings | formula columns B–F recomputed; one position per row; amounts, dates, terms; exclusions | Holdings B–F, Calculations A–H |
+| §6 Ratings | internal unless NR, else worst of Fitch / Moody's / S&P; score = MAX; IG if ≤ 610 | Calculations rating branch |
+| §7 FX | amount ÷ rate (units per EUR); direction checked against the RC column; display currency; the one exception | Calculations CU:CX |
+| §8 Hardcoded and ESG | per-asset fields and every source column, with cells | Hardcoded / ESG Hardcoded INDEX-MATCH |
+| §9 Investor columns | asset × investor matrices; group attributed = Σ weight × column; third party = total − attributed | Calculations nominal / drawn matrices |
+| §10 Views and Output | each view = Σ weight × investor column; Output rows = active assets with exposure in the view | Output!G8, Output rows 11–283 |
+| §11 Metrics | exposure-weighted metrics and distributions | Output totals, Quarterly Reporting distributions |
+| §12 Checks | the workbook's own formula columns against this file | — |
 
-Rules that the workbook kept inside formulas are data here: platform compositions, group attribution weights, FX overrides, rating scales, IG threshold, maturity buckets and display units. Two workbook behaviours are reproduced and flagged because they need a business decision. First, the IG label uses the weaker of the internal and external numeric scores even when the internal grade is displayed. Second, an unrated position scores 0, which the workbook labels "IG". Scope shows it as NR instead.
+Two workbook behaviours are reproduced and flagged because they need a business decision. First, the IG label uses the weaker of the internal and external scores even when the internal grade is displayed. Second, an unrated position scores 0, which the workbook labels "IG". Scope shows it as NR instead.
 
-The **dataset** layer (`js/engine/dataset.js`) flattens the result into one record per position, with every attribute as a dimension and every amount as a measure. The **pivot** engine (`js/engine/pivot.js`) aggregates it. Global filters are applied inside the engine (`js/core/store.js` computes twice: once to evaluate the filters on any field, once on the matching positions), so every page agrees.
-
----
+On top of the calculation, the **analysis** layer (`js/analysis/`) flattens the results into one record per position (with every raw sheet column) for the Explorer and the global filters, and aggregates them with the pivot engine. Global filters are applied inside the calculation (`js/core/store.js` runs it twice: once to evaluate the filters on any field, once on the matching Holdings rows), so every page agrees.
 
 ## Project structure
 
 ```
-index.html               page shell: loads core → engines → demo data → modules → app, in order
+index.html               page shell: loads core → workbook reader → AUM calculation → analysis → demo workbook → pages → app
 start.bat / start.command / start.sh   launchers for Windows / macOS / Linux
-css/
-  scope.css              design tokens, layout, cards, tables, badges, charts
-  grid.css               spreadsheet grid
-  explorer.css           pivot builder and Explorer page
-  filters.css            global filter bar and search
-  concentration.css      concentration page
-  investor.css           investor pages and look-through
-  fonts.css              optional corporate web font (see THIRD_PARTY_NOTICES.md)
-js/core/
-  util.js                numbers, dates (Excel YEARFRAC 30/360), rating normalisation, formatting
-  csv.js                 CSV parse and serialise
-  store.js               tables, settings, global filters, manual adjustments, cached results
-  registry.js            business layers, module registry, hash router
-  icons.js               inline icon set
-  charts.js              SVG bar, column, donut and stacked charts with tooltips
-  charts-extra.js        choropleth map, treemap, heatmap, Pareto, maturity ladder
-  ui.js                  DOM helpers, KPI cards, badges, tables, modals, toasts
-  grid.js                virtualised spreadsheet grid
-  filters.js             global filters and global search
-js/engine/
-  aum.js                 AUM engine (the workbook's calculations)
-  dataset.js             flat records and field registry over the engine result
+js/inputs/
+  workbook.js            reads .xlsx / .xlsm, CSV and pasted Excel ranges into cell grids (no business logic)
+js/calc/
+  aum.js                 ALL AUM calculations, one auditable file (§1 settings … §12 checks)
+js/analysis/
+  dataset.js             flat records and field registry over the results (every raw sheet column included)
   pivot.js               cross-tab aggregation, filters, Top N, % of total, export
-  lookthrough.js         fund look-through to ultimate holders
+  lookthrough.js         fund look-through to ultimate holders (when a unit register is supplied)
+js/core/
+  store.js               the four sheets, settings, global filters, overrides, corrections, cached results
+  filters.js             global filters and global search
+  util.js, csv.js        numbers, dates (Excel YEARFRAC 30/360), formatting; CSV parse and serialise
+  registry.js            business layers, page registry, hash router
+  ui.js, grid.js         DOM helpers, cards, badges, tables, modals; virtualised spreadsheet grid
+  charts.js, charts-extra.js, icons.js   SVG charts (bars, donut, map, treemap, heatmap, Pareto, ladder) and icons
 js/modules/              one file per page; each registers itself with Scope.registerModule
 js/app.js                app shell: data loading, sidebar, top bar, routing
+css/                     scope.css (design tokens and layout), one stylesheet per page group, fonts.css
 data/
-  demo/*.csv             synthetic input tables
-  demo.js                the same tables embedded, so the app works when opened as a file
+  demo/                  the synthetic demo workbook: Scope-demo.xlsx and one CSV per sheet
+  demo.js                the same four sheets embedded, so the app works when opened as a file
   world-map.js           country outlines for the map
-  SCHEMA.md              input table reference
+  SCHEMA.md              the four input sheets
 tools/
   serve.js               zero-dependency static server
-  gen-demo.js            synthetic data generator
-tests/                   engine tests (open tests/index.html, or run: node tests/run-node.js)
+  gen-demo.js            synthetic demo workbook generator
+  xlsx-check.js          inspect a workbook from the command line
+tests/                   open tests/index.html, or run: node tests/run-node.js
 ```
-
----
 
 ## Extending the platform
 
-Each business function is one self-registering file, so new layers can be added without touching existing pages.
+Each coverage task gets **one calculation file** and one or more pages, so new layers can be added without touching existing ones.
 
-1. If it needs new inputs, add the CSV name to `Scope.store.REQUIRED` (or `OPTIONAL`) in `js/core/store.js` and document it in `data/SCHEMA.md`.
-2. Put calculations in a new engine file under `js/engine/` as a pure function of the tables, reusing `result.positions` and `result.assets` where the data already exists.
-3. Create the page in `js/modules/`:
+1. Put the calculation in a new file under `js/calc/` (for example `js/calc/cashflows.js`): a pure function of the input sheets and/or the AUM result, with its settings at the top, the same shape as `js/calc/aum.js`. If it needs other sheets of the workbook, add their names to `Scope.store.SHEETS` and the reader picks them up by name.
+2. Create the page in `js/modules/`:
 
 ```js
 (function (global) {
   const Scope = global.Scope, UI = Scope.ui;
   Scope.registerModule({
     id: 'cashflows', layer: 1, order: 3, title: 'Cash flows & returns', status: 'built', icon: 'activity',
-    // ctx.result is the engine result for the selected platform and currency, with global filters applied
+    // ctx.result is the AUM result for the selected view and currency, with global filters applied
     render(el, ctx) {
       el.appendChild(Scope.app.pageHead({ title: 'Cash flows' }));
       el.appendChild(UI.section({ title: 'Flows', body: UI.table({ rows: [], columns: [] }) }));
@@ -183,11 +170,9 @@ Each business function is one self-registering file, so new layers can be added 
 })(window);
 ```
 
-4. Add its `<script>` tag to `index.html` and remove the matching entry from `js/modules/planned.js`.
+3. Add its `<script>` tags to `index.html` (calculation after `js/calc/aum.js`, page after the other modules) and remove the matching entry from `js/modules/planned.js`.
 
-Conventions that keep the numbers consistent: pages never compute totals themselves (engines do), every value can show its provenance badge, manual corrections go through `Scope.store.addAdjustment` so the audit trail is shared, and charts use `Scope.charts` so colours and tooltips match.
-
----
+Conventions that keep the numbers consistent: pages never compute totals themselves (calculation files do), every value can show its provenance badge, manual corrections go through `Scope.store.addAdjustment` so the audit trail is shared, and charts use `Scope.charts` so colours and tooltips match.
 
 ## Tests
 
@@ -195,32 +180,30 @@ Conventions that keep the numbers consistent: pages never compute totals themsel
 node tests/run-node.js
 ```
 
-The same tests run in the browser at `tests/index.html`. They cover CSV parsing, date and rating rules, the engine's totals and attribution, FX overrides, manual adjustments, the pivot engine (including a 50,000-record performance check), fund look-through reconciliation and the concentration measures.
-
----
+The same tests run in the browser at `tests/index.html`. They cover the workbook reader (xlsx, CSV and pasted ranges), the AUM calculation (table location, column roles, the workbook formula checks, an independent recomputation of total exposure from the raw Holdings grid, views, FX, ratings, exclusions, robustness to where sheets are pasted and to Excel number and date types), the pivot engine (including a 50,000-record performance check), fund look-through reconciliation and the concentration measures.
 
 ## Definitions still to be agreed
 
-These are configurable today, or listed on the relevant planned page, rather than decided in code.
+These are settings (§1 of `js/calc/aum.js`, with per-browser overrides on **Data › Views & investors** and **Data › Columns**) or are listed on the relevant planned page, rather than decided silently in code.
 
 | Definition | Where it lives today |
 |---|---|
-| AUM basis per view and position measure | `platforms.csv`; nominal / drawn / commitment toggles |
-| FX rates, dates and overrides | `fx.csv` |
-| Direct versus indirect (look-through) treatment | `group_weight` in `mapping_investors.csv`, `platforms.csv`, `fund_lookthrough.csv` |
-| Name of the attributed investor group | `config.attribution_label` (default "Group") |
-| Investor hierarchy | `investor_group` and platform compositions |
-| Rating convention and IG threshold | `ratings.csv`, `config.csv` |
-| Maturity buckets, display unit, concentration thresholds | `config.csv` |
+| Which Holdings column is nominal, drawn, commitment, currency, FX rate | §2 column roles, matched by output name; override on Data › Columns |
+| FX direction | auto-checked against the RC column; override on Data › Views & investors |
+| How each view in Mapping column H is composed | §1 `views`; override per view |
+| Investor groups and attribution weights | §1 `investors`; override per investor |
+| The FX exception | §1 `fxOverrides` |
+| Rating convention and IG threshold | Mapping Investment Grade table; §1 `igThreshold` |
+| Maturity buckets, display unit, spread unit, concentration thresholds | §1 |
 | Returns and IRR, fees, NAV, cash-flow conventions, covenant definitions, valuation method, sector KPIs, watchlist criteria, report templates | not yet modelled; each planned page lists what must be supplied |
 
 ## Integrations
 
-No live connection to source systems exists. The CSV files are the integration boundary: an adapter that produces the same files, or passes the same tables to `Scope.store.setTables`, is the intended connection point.
+No live connection to source systems exists. The four input sheets are the integration boundary: an adapter that produces the same sheets (or passes the same cell grids to `Scope.store.setSheets`) is the intended connection point.
 
 ## Privacy
 
-Everything runs locally in the browser. Scope makes no network requests other than reading its own files. Settings, saved views, filter sets and loaded data are kept in the browser's local storage on that machine.
+Everything runs locally in the browser. Scope makes no network requests other than reading its own files. Settings, saved views, filter sets and corrections are kept in the browser's local storage, and a loaded workbook in its IndexedDB, on that machine only.
 
 ## Third-party assets
 

@@ -29,7 +29,7 @@
     const foot = h('tfoot', {},
       h('tr', {}, h('td', {}, 'Listed holders'), h('td'), h('td'), funds.map((f) => pctCell(f.listedShare, f.listedShare > 1 + 1e-9 ? 'iv-bad' : ''))),
       h('tr', {}, h('td', {}, `${L} share from holders`), h('td', { class: 'dim' }, 'Σ share × weight'), h('td'), funds.map((f) => pctCell(f.groupShareFromHolders))),
-      h('tr', {}, h('td', {}, 'group_weight'), h('td', { class: 'dim' }, 'mapping_investors.csv'), h('td'), funds.map((f) => pctCell(f.groupWeight))),
+      h('tr', {}, h('td', {}, 'group_weight'), h('td', { class: 'dim' }, 'js/calc/aum.js CONFIG.investors'), h('td'), funds.map((f) => pctCell(f.groupWeight))),
       h('tr', {}, h('td', {}, 'Check'), h('td'), h('td'), funds.map((f) => h('td', { class: 'num' }, f.consistent ? UI.badge('Consistent', 'ok') : UI.badge('Mismatch', 'warn', `${L} attribution keeps using group_weight`)))));
     return h('div', { class: 'compact' }, h('div', { class: 'tbl-scroll iv-matrix-wrap' }, h('table', { class: 'tbl iv-matrix' }, head, body, foot)));
   }
@@ -44,7 +44,7 @@
       const totalOf = (a) => ({ nominal: a.nominal, drawn: a.drawn, commitment: a.commitment })[measure] / unit;
 
       el.appendChild(Scope.app.pageHead({
-        title: 'Investor book', sub: `asset × investor matrix · ${ccy} millions · investor columns from mapping_investors.csv, platforms from platforms.csv · click an investor for its page`,
+        title: 'Investor book', sub: `asset × investor matrix · ${ccy} millions · investor columns from Mapping › Funding Name, views from Mapping › Active Assets (column H) · click an investor for its page`,
         actions: [
           h('div', { class: 'chips' }, ['nominal', 'drawn', 'commitment'].map((mname) => UI.chip(mname, measure === mname, () => { state.measure = mname; Scope.app.render(true); }))),
           h('div', { class: 'chips' }, UI.chip(`Assets on ${res.platform.label}`, state.scope === 'platform', () => { state.scope = 'platform'; Scope.app.render(true); }), UI.chip('All active assets', state.scope === 'all', () => { state.scope = 'all'; Scope.app.render(true); })),

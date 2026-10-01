@@ -2,15 +2,14 @@
  * Loads after engine.tests.js, js/core/charts-extra.js and js/modules/layer2-concentration.js. */
 (function (global) {
   'use strict';
-  const Scope = global.Scope, U = Scope.util, AUM = Scope.engine.aum, CX = Scope.concentration;
+  const Scope = global.Scope, U = Scope.util, AUM = Scope.calc.aum, CX = Scope.concentration;
   const T = (Scope.tests = Scope.tests || { cases: [], files: null });
   T.add = T.add || ((name, fn) => T.cases.push({ name, fn }));
   const add = T.add;
   const assert = (c, msg) => { if (!c) throw new Error(msg || 'assertion failed'); };
   const close = (a, b, eps, msg) => { if (!(Math.abs(a - b) <= (eps === undefined ? 1e-6 : eps))) throw new Error(`${msg || ''} expected ${b}, got ${a}`); };
-  T.tablesFrom = T.tablesFrom || function (files) { const tables = {}, tableInfo = {}; for (const [n, t] of Object.entries(files)) { const p = Scope.csv.parse(t); tables[n] = p.records.filter(Boolean); tableInfo[n] = { parsed: p }; } return { tables, tableInfo }; };
-  const cache = {};
-  const demo = (platform, currency) => { const k = (platform || 'TOTAL') + '|' + (currency || 'EUR'); return cache[k] || (cache[k] = AUM.compute(Object.assign({ adjustments: [], platform: platform || 'TOTAL', currency: currency || 'EUR' }, T.tablesFrom(T.files)))); };
+  /** Demo result for a view (default Total platform) and display currency (default EUR), shared with aum.tests.js. */
+  const demo = (platform, currency) => T.demo({ platform: platform || 'Total platform', currency: currency || 'EUR' });
   const d = (s) => U.parseDate(s);
   const sum = (arr, f) => arr.reduce((s, x) => s + f(x), 0);
   // a tiny synthetic result with only the fields the helpers read
@@ -126,11 +125,11 @@
   });
 
   add('concentration: another platform and currency stay consistent', () => {
-    const res = demo('ALPHA', 'GBP'), M = CX.metrics(res);
+    const res = demo('Platform Alpha', 'GBP'), M = CX.metrics(res);
     close(M.total, res.metrics.total_exposure_m, 1e-6, 'total in display currency');
     close(sum(CX.paretoCumulative(res.rows.map((r) => ({ label: r.code, value: r.exposure_m }))).slice(-1), (x) => x.cumShare), 1, 1e-9, 'pareto of all rows ends at 100 %');
     const base = demo();
-    close(CX.metrics(base).nonBaseShare, CX.metrics(demo('TOTAL', 'GBP')).nonBaseShare, 1e-9, 'non-base share independent of display currency');
+    close(CX.metrics(base).nonBaseShare, CX.metrics(demo('Total platform', 'GBP')).nonBaseShare, 1e-9, 'non-base share independent of display currency');
   });
 
   if (Scope.charts && Scope.charts.squarify) {

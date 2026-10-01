@@ -1,67 +1,85 @@
-# Scope input schema (CSV)
+# Scope inputs: the four AUM sheets
 
-One CSV per sheet of the existing Excel AUM workbook. All files are UTF-8, comma-separated, first row = headers. Dates are `yyyy-mm-dd` (also accepted: `dd/mm/yyyy`, Excel serials). Amounts are plain numbers in the position currency.
+The AUM calculation reads **exactly four sheets** of the AUM workbook. Load them on **Data & validation** in any of three ways:
 
-| File | Workbook sheet | Key | Purpose |
-|---|---|---|---|
-| `holdings.csv` | Holdings (rows 4..1388) | investor × holding | The position extract (SCD / Simcorp). Headers may be the source system's own; `mapping_columns.csv` renames them. Blank rows are ignored (the workbook's padded rows). |
-| `mapping_columns.csv` | Mapping C:D | source header | `source_header,canonical_field,required,note`. Maps extract headers to canonical fields. If the extract already uses canonical names no row is needed. |
-| `mapping_assets.csv` | Mapping I:J, P:T | holding_id | `holding_id,asset_code,asset_name,code_name,security_id,tranche`. Many holdings (tranches) → one asset. |
-| `mapping_investors.csv` | Mapping Y:AA + Output row-3/4 weights | investor_id | `investor_id,investor_key,investor_label,investor_group,group_weight`. `group_weight` is the group inclusion / look-through weight (1 = group entity, 0 = third party, 0.35 = a fund 35% held by the group). `investor_group` ∈ `Group entity`, `Fund`, `Third party`. Without the column nothing is attributed to the group and one warning is raised. |
-| `platforms.csv` | Output!G8 choices + special look-through columns | platform_id | `platform_id,platform_label,investor_label,weight`. A platform is a weighted combination of investor columns. `*` = every investor. |
-| `ratings.csv` | Mapping AC:AD | grade | `grade,numeric,scale` with scale ∈ SP_FITCH, MOODYS, INTERNAL, ALL. Numeric rises as credit weakens. |
-| `fx.csv` | Calculations CU:CW (+ the hard-coded exception) | currency | `currency,rate_per_eur,investor_id,platform_id,note`. Rows with investor/platform are overrides applied only when both match. |
-| `hardcoded.csv` | Hardcoded | asset_code | Manual deal attributes: sector, subsector, country, region, sponsor, greenfield_brownfield, repayment_type, cash_flow_type, instrument, origination, deal_year, upfront_fee_bps, protection_end_date, watchlist, deal_lead, covenant_type, lockup_level, default_level, wal_years, total_transaction_size, description. Extra columns are kept and shown. |
-| `esg.csv` | ESG Hardcoded | asset_code | esg_score, cbi_taxonomy, ghg_scope1_t, ghg_scope2_t, ghg_scope3_t, ghg_intensity_t_per_eurm, green_loan (Y/N), sfdr_article, data_coverage. |
-| `config.csv` | formula constants | key | base_currency, ig_threshold, rating_selection, single_portfolio_token, amount_display_unit, maturity_buckets, reporting_date_rule, dataset_label, attribution_label (display name of the attributed group, default `Group`; every UI label is built from it: "Group attributed", "Group share of book", "Group vs third party"). |
-| `fund_lookthrough.csv` *(optional)* | special look-through columns (unit registers) | fund_label × holder_label | `fund_label,holder_label,share,note`. Who owns the units of each fund investor column. See "Fund look-through" below. When absent every page shows direct exposure only, with a notice. |
+- drop the workbook itself (`.xlsx` / `.xlsm`); the four sheets are picked by name and other sheets are ignored;
+- drop one CSV per sheet, named after the sheet (`Holdings.csv`, `Mapping.csv`, `Hardcoded.csv`, `ESG Hardcoded.csv`);
+- paste a sheet copied from Excel (select the used range, copy, paste; say which cell the copy started at, A1 by default).
 
-## Fund look-through (`fund_lookthrough.csv`, optional)
+Columns are found **by name**, not by letter, so a column can move or new columns can be added without breaking anything. Each input's resolution (which column, found how) is shown on **Data › Columns**, and any role can be pointed at another column there. Nothing leaves the browser.
 
-One row per unit holder of a fund investor column. Read by `js/engine/lookthrough.js` (`Scope.engine.lookthrough`); the investor book and the investor page (`#/investor/<label>`) use it.
+Synthetic examples of all four sheets are in `data/demo/` (one CSV per sheet and `Scope-demo.xlsx`).
 
-| Column | Required | Notes |
+## Holdings
+
+| | |
+|---|---|
+| Row 2 | output names: `XLOOKUP(row-3 header, Mapping!C:C, Mapping!D:D)`, `#N/A` when a column is not in References |
+| Row 3 | column headers, from column B |
+| Row 4+ | one row per investor × security; rows without a Security ID (copied formula rows showing `0x0`) are ignored |
+
+Formula columns B–F are recomputed by the calculation and compared with the workbook's own values (**Data › Checks**):
+
+| Column | Header | Formula |
 |---|---|---|
-| fund_label | Y | The fund's `investor_label` in mapping_investors.csv (e.g. `Investor 7`). A label that is not an investor column is accepted with a warning: it has no direct exposure and only passes through what it holds in other funds. |
-| holder_label | Y | Who holds the units: normally another investor column (Group entity, third party, or another fund). A holder that is not an investor column is kept and carries look-through exposure only (info issue). |
-| share | Y | Fraction of the fund's units held, 0–1 (`0.15`); `15%` is also read as 0.15. A share outside 0–1 is an error; it is used as entered, never clamped. Duplicate fund × holder rows are added (warning). |
-| note | | Free text, shown on the investor page. |
+| B | Mapping | `XLOOKUP(Security Name, Mapping!I, Mapping!J)` |
+| C | Unique Identifier | `Investor Code & "x" & Security ID` |
+| D | Investor Code | `IF(Model Portfolio = "SINGLE", Portfolio, Model Portfolio)` |
+| E | Identification ID | `XLOOKUP(Security ID, Mapping!T, Mapping!S)` |
+| F | Code Name | `XLOOKUP(Security ID, Mapping!T, Mapping!Q)` |
 
-Rules:
+Columns the calculation uses (matched on the row-2 output name first, then the row-3 header):
 
-- **Residual.** 1 − Σ shares of a fund is held outside the platform and shown as "External fund holders". Σ shares above 100% is an error (the residual turns negative).
-- **Economic exposure.** total(H, asset) = direct(H, asset) + Σ over funds F of share(F, H) × total(F, asset); look-through = total − direct. A fund holding units of another fund is followed to a fixed point, capped at 5 levels; a cycle (including a fund holding itself) is an error and is truncated, never looped.
-- **Ultimate holders.** A fund with rows here is a pass-through: in ultimate-holder views it is replaced by its holders plus the external residual, so Σ ultimate holders + external = Σ investor columns = asset total (no double counting). A fund without rows stays a holder in its own right.
-- **Consistency with `group_weight`.** Σ share × holder group_weight (Group entity 1, third party 0, a fund at its own weight) should equal the fund's `group_weight` in mapping_investors.csv. A divergence is a warning; Group attribution on every other page keeps using `group_weight`.
-- **Filters.** Look-through runs on the engine result after global filters, so a filter that removes a fund's positions also removes the look-through exposure that comes from them.
+| Role | Output name (row 2) | Header (row 3) |
+|---|---|---|
+| Model portfolio, portfolio | Model Portfolio, Portfolio | Model Portfolio, Portfolio |
+| Security ID, security name | Security ID, Security Name | Security ID, Security Name |
+| Reporting date (MIN = reporting date) | Reporting Date | Reporting Date |
+| Position currency | Currency | Quotation Currency |
+| FX rate (units per EUR; checked against the RC column) | FX Rate | FX Rate EC |
+| Nominal (exposure) | Nominal | RA_Commitment QC |
+| Drawn | Drawn | Current Drawn Amount CCY |
+| Commitment | Commitment | Initial Commitment Amount CCY |
+| Nominal in reference currency (FX direction check) | Nominal RC | RA Commitment RC |
+| Maturity, purchase date | Maturity Date, Purchase Date | Maturity Date, Purchase Date |
+| Rate type, spread, WAL | Rate Type, Spread at Acquisition, WAL | Rate Type, All-in Spread at Acquisition, WAL |
+| Ratings | Internal Rating, Closing Rating, Fitch, S&P, Moody's | Internal Current Rating, …Rating_Closing, Rating Fitch, Rating S&P, Rating Moody's |
+| Country, instrument, bullet flag, parent issuer, seniority | Country, Instrument, Bullet, Parent Issuer, Seniority | RA Asset Country Name, Security Type Name, RA_Bullet, Parent Issuer Name, Seniority |
 
-Demo (SYNTHETIC): Investor 7 (Fund, group_weight 0.35) is held 15% / 10% / 10% by Investors 1, 3 and 5 (Group entities) and 25% by Investor 9 (third party), 40% external; Investor 8 (Fund, 0.20) is held 12% / 8% by Investors 2 and 6 and 30% by Investor 10, 50% external.
+Every other column (covenants, ICR, LTV, DSCR, yields, …) is carried through untouched and is available in the Explorer (group "Holdings columns").
 
-## Canonical position fields (`holdings.csv` after mapping)
+## Mapping
 
-| Field | Required | Workbook column | Notes |
+Six tables side by side; each has its **title in row 2** and **headers in row 3**. A table is located by its title, so it can move; the workbook's default column is the fallback.
+
+| Table | Default columns | Headers (row 3) | Used for |
 |---|---|---|---|
-| portfolio_id | Y | Holdings G | investor / portfolio identifier; `SINGLE` → use portfolio_alt_id |
-| portfolio_alt_id | | Holdings H | |
-| holding_id | Y | Holdings I | joins to mapping_assets |
-| security_name | | Holdings J | |
-| as_of_date | Y | Holdings F | reporting date = MIN over rows |
-| currency | Y | Calculations CI | |
-| nominal | Y | Calculations CO | |
-| drawn | Y | Calculations CQ | blank → 0 (flagged) |
-| commitment | | Calculations CS | blank → nominal |
-| internal_grade, fitch, moodys, sp | | ratings branch | NR / blank allowed |
-| funding_date, maturity_date | | tenor, buckets | |
-| coupon_type | | fixed_floating | "Fixed" → Fixed, anything else → Floating |
-| coupon, margin_bps, instrument_type | | | |
+| References | C:D | Columns in Holdings tab · Output Names | Holdings row 2 |
+| Active Assets | H:M | Views (Portfolios / Investors) · List · Mapping · Active Assets Output · Selected Assets · Number | H = the view choices (Output!G8); I → J maps security names to assets; UNIQUE(J) = assets in the Output |
+| Security Mapping | (P helper) Q:U | Code Name · Holdings Name · Identification ID · Holding ID · Transaction Group | holding ID (T) → asset = identification ID (S), code name (Q), project name (R) |
+| Funding Name | Y:AA | Fund Name · Holdings Name · Holdings ID | investor code (AA) → investor column (Z) and fund name (Y) |
+| Investment Grade Mapping | AC:AE | Rating · Score · (extra) | rating → score; IG if score ≤ 610 |
+| Fund Check | AH:AI… | Mapping · Holdings · (extra) | checked: every listed holdings name must be an investor column |
 
-## What the engine does with them
-1. Map headers → canonical fields; blank rows skipped; required fields checked (fatal if absent).
-2. Build the position key `investor_id x holding_id`; apply manual adjustments (original kept).
-3. Look up asset (holding_id) and investor (investor_id). Unmapped holding → **excluded + error**. Unmapped investor → kept in totals, shown as "Unmapped investor", error.
-4. Ratings: internal unless NR, else worst external (Fitch → Moody's → S&P); numeric = MAX(internal, external); SUB IG if numeric > `ig_threshold`.
-5. FX: `amount ÷ rate(ccy per EUR) × rate(display ccy per EUR)`; overrides by investor/platform; missing rate → **excluded + error**.
-6. Asset totals, investor columns, platform columns (Σ weight × column), group attributed (Σ group_weight × column; engine fields `group_nominal`, `group_drawn`, `group_invested`, Output-row fields `group_nominal_m`, `group_drawn_m`, metrics `book_group_m`, `group_share_of_book`), third party = total − attributed (`third_party_nominal`, `third_party_drawn`).
-7. Output rows = assets with platform nominal > 0; exposure-weighted metrics and distributions.
+## Hardcoded
 
-Everything computed carries a provenance descriptor: `imported` (file + line + column), `manual` (adjustment with original, reason, user, time) or `calculated` (formula note).
+Headers in row 3 from column C (row 2 holds the labels the workbook's lookups use). Keyed by **Security ID** = the asset's identification ID. Columns D (Project Name) and E (Code Name) are lookups to Mapping and are reconciled.
+
+Columns used: Security ID, Project Name, Code Name, Chronological Order, Subsector, Cashflow Type, Description, Shareholders, Origination, Staff Closing, Upfront, End of NC / MW, IC Date, Funding Date, Total Debt Offering, Watchlist, Investor 2 Sector Classification, Compliance with Financial Covenants. Every column, including those not listed (prepayment protection, jurisdiction tiers, MN classifications, TICS code, …), is shown on the asset page with its cell and is available in the Explorer.
+
+## ESG Hardcoded
+
+Headers in row 3 from column C, keyed by **Security ID**: Security ID, Project Name, Code Name, Infra Code, FM Monitoring (row 2: Staff Monitoring), E Score, S Score, G Score, ESG Score, Shareholders, CHI Sector, CHI Subsector, CHI Subsubsector, CHI Asset Type, CHI Asset Specific, GHG Scope 1, GHG Scope 2, GHG Scope 3.
+
+## What is not in the four sheets
+
+Rules the workbook keeps inside Calculations and Output formulas are collected in **§1 of `js/calc/aum.js`** (and can be overridden per browser on **Data › Views & investors**):
+
+- how each view in Mapping column H is composed (an investor column needs nothing; aggregates such as "Total platform" or a look-through column are defined there);
+- each investor column's group (group entity, fund, third party) and attribution weight;
+- the FX exception (one investor, one currency, one view, one rate);
+- the IG threshold, maturity buckets, display unit, spread unit and the illustrative concentration thresholds.
+
+## Errors and warnings
+
+Nothing is silently zeroed. A Security ID missing from Security Mapping, a currency without an FX rate, or a non-numeric nominal **excludes** the position, which is listed with its reason. An investor code missing from Funding Name is kept in the asset totals but in no investor column. An asset held in Holdings but missing from Active Assets is left out of the Output (as in the workbook), with one warning per asset. All of these appear on **Data › Issues** with the sheet and row.

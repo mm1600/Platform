@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- Scope: infrastructure-debt portfolio platform. Open this file in a browser, or run start.bat / start.command / start.sh.
-     Scripts are plain classic scripts loaded in dependency order: core → engines → demo data → pages → app shell. -->
+     Scripts are plain classic scripts loaded in dependency order: core → workbook reader → AUM calculation → analysis → demo workbook → pages → app shell. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="css/concentration.css">
 <link rel="stylesheet" href="css/investor.css">
 <link rel="stylesheet" href="css/filters.css">
+<link rel="stylesheet" href="css/data.css">
 </head>
 <body>
 <div class="app" id="app">
@@ -29,6 +30,7 @@
 <!-- core (classic scripts so the app works from file://) -->
 <script src="js/core/util.js"></script>
 <script src="js/core/csv.js"></script>
+<script src="js/inputs/workbook.js"></script>
 <script src="js/core/store.js"></script>
 <script src="js/core/registry.js"></script>
 <script src="js/core/icons.js"></script>
@@ -38,10 +40,10 @@
 <script src="js/core/ui.js"></script>
 <script src="js/core/grid.js"></script>
 <!-- engines: aum (positions, assets, Output rows) → dataset (flat records + field registry) → pivot (cross-tab) -->
-<script src="js/engine/aum.js"></script>
-<script src="js/engine/dataset.js"></script>
-<script src="js/engine/pivot.js"></script>
-<script src="js/engine/lookthrough.js"></script>
+<script src="js/calc/aum.js"></script>
+<script src="js/analysis/dataset.js"></script>
+<script src="js/analysis/pivot.js"></script>
+<script src="js/analysis/lookthrough.js"></script>
 <script src="js/core/filters.js"></script>
 <!-- embedded synthetic demo dataset (used when CSVs cannot be fetched, e.g. file://) -->
 <script src="data/demo.js"></script>

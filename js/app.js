@@ -13,8 +13,8 @@
 
   /** Start-up: restore settings, load data, draw the shell, then route on every hash change and store update. */
   App.init = async function () {
-    const persisted = store.restore();
-    await App.loadInitialData(persisted);
+    store.restore();
+    await App.loadInitialData();
     App.renderShell();
     window.addEventListener('hashchange', App.render);
     store.subscribe(() => { App.renderSidebar(); App.renderTopbar(); App.render(true); });
@@ -22,23 +22,21 @@
     App.render();
   };
 
-  /** Data source order: files the user loaded earlier → CSVs served next to the page → the embedded demo copy. */
-  App.loadInitialData = async function (persisted) {
-    if (persisted && persisted.files && Object.keys(persisted.files).length) { store.setTables(persisted.files, 'file'); return; }
-    if (/^https?:$/.test(location.protocol)) {
-      try {
-        const files = {};
-        await Promise.all(store.REQUIRED.map(async (n) => { const r = await fetch('data/demo/' + n, { cache: 'no-store' }); if (!r.ok) throw new Error(n); files[n] = await r.text(); }));
-        // optional tables (e.g. fund_lookthrough.csv): load when present, ignore when absent
-        await Promise.all(store.OPTIONAL.map(async (n) => { try { const r = await fetch('data/demo/' + n, { cache: 'no-store' }); if (r.ok) files[n] = await r.text(); } catch (e) { /* optional */ } }));
-        store.setTables(files, 'fetch'); return;
-      } catch (e) { /* fall through to embedded */ }
-    }
-    if (global.SCOPE_DEMO) store.setTables(global.SCOPE_DEMO, 'embedded');
-    else store.setTables({}, 'none');
+  /** Data source order: the workbook sheets the user loaded earlier (saved in IndexedDB) → the bundled synthetic demo. */
+  App.loadInitialData = async function () {
+    let saved = null;
+    try { saved = await store.loadSavedSheets(); } catch (e) { saved = null; }
+    if (saved && saved.sheets && Object.keys(saved.sheets).length) { store.setSheets(saved.sheets, saved.sources, { demo: false }); return; }
+    App.loadDemo();
   };
-  /** Drop user-loaded files and reload the embedded demo dataset. */
-  App.resetToDemo = function () { store.clearDataset(); if (global.SCOPE_DEMO) store.setTables(global.SCOPE_DEMO, 'embedded'); Scope.ui.toast('Demo dataset restored'); };
+  /** Load the bundled synthetic demo workbook (data/demo.js). */
+  App.loadDemo = function () {
+    const demo = global.SCOPE_DEMO;
+    if (demo && demo.sheets) store.setSheets(demo.sheets, Object.fromEntries(Object.keys(demo.sheets).map((k) => [k, { kind: 'demo', file: 'data/demo.js', sheetName: k }])), { demo: true, label: demo.label });
+    else store.setSheets({}, {}, { demo: true });
+  };
+  /** Forget the loaded workbook and reload the demo. */
+  App.resetToDemo = function () { store.clearSavedSheets(); App.loadDemo(); Scope.ui.toast('Demo workbook restored'); };
 
   // ---------- shell ----------
   App.renderShell = function () { App.renderSidebar(); App.renderTopbar(); };
@@ -62,7 +60,7 @@
       }
     }
     side.appendChild(nav);
-    side.appendChild(h('div', { class: 'sidebar-cta' }, h('div', {}, h('strong', { style: { color: '#e9ecef' } }, store.state.datasetLabel || 'Dataset'), ' · ', { embedded: 'embedded demo', fetch: 'served CSVs', file: 'loaded files', none: 'no data' }[store.state.datasetSource] || ''),
+    side.appendChild(h('div', { class: 'sidebar-cta' }, h('div', {}, h('strong', { style: { color: '#e9ecef' } }, store.state.datasetLabel || 'Dataset'), ' · ', { demo: 'bundled demo workbook', workbook: 'your workbook' }[store.state.datasetSource] || ''),
       h('div', { style: { marginTop: '.35rem' } }, `Scope v${Scope.version} · `, h('a', { href: 'tests/index.html', target: '_blank' }, 'engine tests'), ' · ', h('a', { href: 'README.md', target: '_blank' }, 'README'))));
   };
 
@@ -73,11 +71,11 @@
     bar.innerHTML = '';
     bar.appendChild(h('button', { class: 'hamburger', onClick: () => document.getElementById('sidebar').classList.toggle('open'), 'aria-label': 'Toggle navigation' }, icon('menu', { size: 22 })));
     if (res) {
-      const platSel = h('select', { class: 'input', onChange: (e) => store.setSetting('platform', e.target.value), title: 'Platform (Output!G8)' },
+      const platSel = h('select', { class: 'input', onChange: (e) => store.setSetting('platform', e.target.value), title: 'View (Mapping column H, the Output!G8 choice)' },
         res.platforms.map((p) => h('option', { value: p.id, selected: p.id === res.platformId }, p.label)));
       const ccySel = h('select', { class: 'input', onChange: (e) => store.setSetting('currency', e.target.value), title: 'Display currency (Output!G6)' },
         res.currencies.map((c) => h('option', { value: c, selected: c === res.displayCurrency }, c)));
-      bar.append(h('label', {}, 'Platform', platSel), h('label', {}, 'Currency', ccySel),
+      bar.append(h('label', {}, 'View', platSel), h('label', {}, 'Currency', ccySel),
         h('span', { class: 'nav-text', title: 'Reporting date = earliest position date (workbook rule)' }, icon('calendar', { size: 14 }), ` Reporting date ${F.date(res.reportingDate)}${res.quarter ? ' · ' + res.quarter : ''}`));
     }
     // global search (assets, investors, values, pages) — see js/core/filters.js
@@ -94,7 +92,7 @@
   };
 
   /** The current engine result, or null when no data is loaded or the engine fails (errors are logged, not thrown). */
-  App.safeResult = function () { try { return store.missingTables().length === store.REQUIRED.length ? null : store.result(); } catch (e) { console.error(e); return null; } };
+  App.safeResult = function () { try { return store.missingSheets().length === store.SHEETS.length ? null : store.result(); } catch (e) { console.error(e); return null; } };
 
   // ---------- routing ----------
   App.render = function (soft) {

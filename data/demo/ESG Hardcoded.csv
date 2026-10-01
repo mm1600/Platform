@@ -1,0 +1,50 @@
+
+,,,Project Name,Code Name,Infra Code,Staff Monitoring,E Score,S Score,G Score,ESG Score,Shareholders,CHI Sector,CHI Subsector,CHI Subsubsector,CHI Asset Type,CHI Asset Specific,GHG Scope 1,GHG Scope 2,GHG Scope 3
+,,Security ID,Project Name,Code Name,Infra Code,FM Monitoring,E Score,S Score,G Score,ESG Score,Shareholders,CHI Sector,CHI Subsector,CHI Subsubsector,CHI Asset Type,CHI Asset Specific,GHG Scope 1,GHG Scope 2,GHG Scope 3
+,,100200,Aurora Offshore,AURO01,INF001,E. Rossi,52,88,89,76,Corvus Digital,Renewables,Offshore wind,Offshore wind assets,Construction,Private Placement Note,18876,12584,69479
+,,100201,Beacon Airports,BEAC02,INF002,E. Rossi,70,46,63,60,Aquila Utilities,Transport,Airports,Airports assets,Construction,Loan,1922,1281,6364
+,,100202,Cascade Telecom,CASC03,INF003,C. Dubois,85,90,62,79,Silverline Transport,Digital,Telecom towers,Telecom towers assets,Operational,Loan,33223,22148,199023
+,,100203,Delta Water,DELT04,INF004,A. Martin,86,57,78,74,Corvus Digital,Utilities,Water,Water assets,Construction,Private Placement Note,527,352,2071
+,,100205,Ember Battery,EMBE05,INF005,D. Schäfer,50,77,54,60,Terra Social Infra,Energy transition,Battery storage,Battery storage assets,Operational,Loan,16804,11202,155246
+,,100207,Falcon Hospitals,FALC06,INF006,B. Okoro,87,91,59,79,Northwind Capital,Social,Hospitals (PPP),Hospitals (PPP) assets,Operational,Private Placement Note,34223,22816,217327
+,,100208,Granite Hydro,GRAN07,INF007,D. Schäfer,95,61,75,77,Meridian Infrastructure,Renewables,Hydro,Hydro assets,Operational,Loan,31565,21043,300238
+,,100209,Harbour Toll,HARB08,INF008,D. Schäfer,65,70,64,66,Helios Partners,Transport,Toll roads,Toll roads assets,Operational,Loan,12344,8229,36156
+,,100210,Iris Fibre,IRIS09,INF009,D. Schäfer,43,71,61,58,Northwind Capital,Digital,Fibre networks,Fibre networks assets,Operational,Loan,48020,32013,126541
+,,100211,Juniper Gas,JUNI10,INF010,F. Lindqvist,46,49,71,55,Silverline Transport,Utilities,Gas distribution,Gas distribution assets,Operational,Private Placement Note,25969,17313,196203
+,,100212,Kestrel Battery,KEST11,INF011,E. Rossi,67,83,73,74,Meridian Infrastructure,Energy transition,Battery storage,Battery storage assets,Operational,Private Placement Note,15629,10420,79167
+,,100213,Lumen Hospitals,LUME12,INF012,D. Schäfer,64,42,88,65,Helios Partners,Social,Hospitals (PPP),Hospitals (PPP) assets,Operational,Loan,20200,13467,68316
+,,100215,Meridian Solar,MERI13,INF013,D. Schäfer,74,95,46,72,Boreal Energy,Renewables,Solar PV,Solar PV assets,Operational,Loan,13505,9003,61020
+,,100217,Orion Fibre,ORIO15,INF015,F. Lindqvist,74,65,69,69,Helios Partners,Digital,Fibre networks,Fibre networks assets,Operational,Loan,18447,12298,55288
+,,100218,Pioneer Gas,PION16,INF016,F. Lindqvist,89,52,55,65,Silverline Transport,Utilities,Gas distribution,Gas distribution assets,Operational,Loan,1407,938,10146
+,,100219,Quartz Battery,QUAR17,INF017,B. Okoro,64,79,64,69,Boreal Energy,Energy transition,Battery storage,Battery storage assets,Operational,Private Placement Note,18242,12162,136670
+,,100220,Ridge Student,RIDG18,INF018,F. Lindqvist,59,49,88,65,Northwind Capital,Social,Student accommodation,Student accommodation assets,Operational,Loan,21920,14613,79120
+,,100221,Summit Hydro,SUMM19,INF019,E. Rossi,92,54,50,65,Terra Social Infra,Renewables,Hydro,Hydro assets,Operational,Loan,52081,34721,364299
+,,100222,Tidal Toll,TIDA20,INF020,C. Dubois,58,43,87,63,Helios Partners,Transport,Toll roads,Toll roads assets,Operational,Loan,53943,35962,446648
+,,100223,Umbra Data,UMBR21,INF021,A. Martin,72,56,57,62,Helios Partners,Digital,Data centres,Data centres assets,Construction,Loan,3337,2225,13057
+,,100224,Vertex Electricity,VERT22,INF022,A. Martin,59,43,83,62,Aquila Utilities,Utilities,Electricity networks,Electricity networks assets,Operational,Loan,52546,35030,498944
+,,100225,Willow EV,WILL23,INF023,E. Rossi,65,65,90,73,Meridian Infrastructure,Energy transition,EV charging,EV charging assets,Construction,Loan,44653,29769,261438
+,,100226,Zenith Education,ZENI24,INF024,C. Dubois,72,95,89,85,Atlas Core Funds,Social,Education (PPP),Education (PPP) assets,Operational,Loan,26819,17880,117780
+,,100228,Alder Offshore,ALDE25,INF025,E. Rossi,77,70,46,64,Corvus Digital,Renewables,Offshore wind,Offshore wind assets,Operational,Private Placement Note,13417,8945,61633
+,,100230,Birch Ports,BIRC26,INF026,C. Dubois,64,55,62,60,Terra Social Infra,Transport,Ports,Ports assets,Operational,Loan,19081,12720,61189
+,,100231,Cobalt Telecom,COBA27,INF027,F. Lindqvist,52,50,84,62,Lumen Grid,Digital,Telecom towers,Telecom towers assets,Operational,Loan,36639,24426,258832
+,,100232,Dune Gas,DUNE28,INF028,C. Dubois,64,63,88,72,Silverline Transport,Utilities,Gas distribution,Gas distribution assets,Operational,Loan,13527,9018,74717
+,,100233,Echo District,ECHO29,INF029,E. Rossi,53,81,70,68,Helios Partners,Energy transition,District heating,District heating assets,Operational,Loan,12393,8262,86379
+,,100234,Fjord Student,FJOR30,INF030,E. Rossi,84,70,67,74,Aquila Utilities,Social,Student accommodation,Student accommodation assets,Construction,Loan,37901,25267,189257
+,,100235,Glacier Hydro,GLAC31,INF031,F. Lindqvist,90,88,86,88,Meridian Infrastructure,Renewables,Hydro,Hydro assets,Construction,Loan,35401,23600,194661
+,,100236,Horizon Airports,HORI32,INF032,F. Lindqvist,64,48,54,55,Aquila Utilities,Transport,Airports,Airports assets,Operational,Loan,3992,2662,27921
+,,100237,Indigo Fibre,INDI33,INF033,E. Rossi,92,71,62,75,Boreal Energy,Digital,Fibre networks,Fibre networks assets,Operational,Private Placement Note,39659,26439,331950
+,,100238,Jade Gas,JADE34,INF034,D. Schäfer,63,45,84,64,Atlas Core Funds,Utilities,Gas distribution,Gas distribution assets,Operational,Loan,14146,9431,139765
+,,100239,Kite District,KITE35,INF035,F. Lindqvist,92,52,74,73,Lumen Grid,Energy transition,District heating,District heating assets,Construction,Loan,18428,12285,146151
+,,100241,Lantern Hospitals,LANT36,INF036,B. Okoro,83,70,83,79,Lumen Grid,Social,Hospitals (PPP),Hospitals (PPP) assets,Operational,Loan,36292,24195,278758
+,,100242,Mistral Solar,MIST37,INF037,C. Dubois,81,70,74,75,Lumen Grid,Renewables,Solar PV,Solar PV assets,Operational,Private Placement Note,440,294,3834
+,,100243,Nova Ports,NOVA38,INF038,E. Rossi,88,60,91,80,Meridian Infrastructure,Transport,Ports,Ports assets,Operational,Loan,52621,35080,302445
+,,100244,Opal Telecom,OPAL39,INF039,F. Lindqvist,71,67,87,75,Aquila Utilities,Digital,Telecom towers,Telecom towers assets,Construction,Loan,38789,25859,230078
+,,100245,Prism Gas,PRIS40,INF040,D. Schäfer,68,88,65,74,Northwind Capital,Utilities,Gas distribution,Gas distribution assets,Construction,Loan,50552,33701,460712
+,,100247,Quill District,QUIL41,INF041,E. Rossi,51,75,72,66,Aquila Utilities,Energy transition,District heating,District heating assets,Operational,Loan,2120,1414,5904
+,,100248,Rowan Student,ROWA42,INF042,D. Schäfer,46,57,47,50,Corvus Digital,Social,Student accommodation,Student accommodation assets,Operational,Loan,12521,8348,109285
+,,100250,Sable Solar,SABL43,INF043,A. Martin,55,51,88,65,Aquila Utilities,Renewables,Solar PV,Solar PV assets,Operational,Loan,51339,34226,418574
+,,100251,Tundra Ports,TUND44,INF044,E. Rossi,59,93,84,79,Boreal Energy,Transport,Ports,Ports assets,Operational,Loan,32771,21847,87351
+,,100252,Ultra Fibre,ULTR45,INF045,E. Rossi,49,68,85,67,Boreal Energy,Digital,Fibre networks,Fibre networks assets,Operational,Loan,43933,29289,433363
+,,100253,Vale Water,VALE46,INF046,E. Rossi,55,56,86,66,Lumen Grid,Utilities,Water,Water assets,Operational,Loan,22996,15330,92336
+,,100254,Wren EV,WREN47,INF047,B. Okoro,61,73,92,75,Boreal Energy,Energy transition,EV charging,EV charging assets,Construction,Private Placement Note,6050,4033,22646
+,,100255,Yarrow Hospitals,YARR48,INF048,B. Okoro,63,74,73,70,Corvus Digital,Social,Hospitals (PPP),Hospitals (PPP) assets,Operational,Loan,43086,28724,219997

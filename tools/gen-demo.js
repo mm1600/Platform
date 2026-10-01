@@ -1,15 +1,23 @@
 #!/usr/bin/env node
-/*
- * Scope — synthetic demo dataset generator (zero dependencies).
- * Writes data/demo/*.csv and data/demo.js (embedded copy for file:// use).
- * EVERYTHING here is SYNTHETIC. No real investors, mandates, assets or amounts.
- * Deterministic: same seed → same files.  Run:  node tools/gen-demo.js
+/* Scope: synthetic demo workbook generator (zero dependencies).
  *
- * Produces one CSV per workbook sheet in the shapes documented in data/SCHEMA.md: 48 assets across six
- * sectors, 1–2 tranches each, held by 2–6 of 12 investors, plus the reference tables (mappings,
- * platforms, ratings, FX, config, fund look-through). A handful of deliberate data quirks are injected
- * at the end so the validation page and the engine tests (tests/engine.tests.js) have known issues to
- * find; changing this script changes the expected counts in those tests.
+ *   node tools/gen-demo.js
+ *
+ * Writes the four AUM input sheets in the same layout as the production workbook:
+ *   data/demo/Holdings.csv, Mapping.csv, Hardcoded.csv, ESG Hardcoded.csv   (one CSV per sheet, cell A1 = first CSV cell)
+ *   data/demo/Scope-demo.xlsx                                              (the same four sheets as one workbook, if the
+ *                                                                           workbook writer in js/inputs/workbook.js exists)
+ *   data/demo.js                                                           (the same grids embedded, for opening index.html as a file)
+ *
+ * Layouts (row 2 = labels used by lookups, row 3 = column headers, data from row 4, columns A–B blank unless stated):
+ *   Holdings       headers from column B (B–F are the workbook's formula columns: Mapping, Unique Identifier, Investor Code,
+ *                  Identification ID, Code Name); row 2 = XLOOKUP(row-3 header, Mapping!C:D) → output name.
+ *   Mapping        six side-by-side tables, title in row 2, headers in row 3: References (C:D), Active Assets (H:M),
+ *                  Security Mapping (P helper, Q:U), Funding Name (Y:AA), Investment Grade Mapping (AC:AE), Fund Check (AH:AJ).
+ *   Hardcoded      headers from column C, keyed by Security ID; D (Project Name) and E (Code Name) are lookups to Mapping.
+ *   ESG Hardcoded  headers from column C, keyed by Security ID.
+ *
+ * EVERYTHING IS SYNTHETIC: no real investors, mandates, assets, limits or amounts. Deterministic (same seed → same files).
  */
 'use strict';
 const fs = require('fs');
@@ -19,8 +27,8 @@ const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'data', 'demo');
 fs.mkdirSync(OUT, { recursive: true });
 
-// ---------- deterministic PRNG ----------
-/** mulberry32: small fast 32-bit seeded PRNG returning floats in [0, 1). */
+// ---------- deterministic random numbers ----------
+/** Mulberry32 PRNG: deterministic floats in [0, 1). */
 function mulberry32(a) {
   return function () {
     a |= 0; a = (a + 0x6D2B79F5) | 0;
@@ -29,292 +37,266 @@ function mulberry32(a) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-const rnd = mulberry32(20260930);
-// Random helpers (all draw from the single seeded stream, so call order matters for reproducibility):
-// pick an element, uniform float in [a, b), round to a step, weighted choice, ISO date, add (fractional) years by whole months.
+const rnd = mulberry32(20261001);
 const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
 const between = (a, b) => a + rnd() * (b - a);
 const roundTo = (x, step) => Math.round(x / step) * step;
-const weighted = (pairs) => { // [[value, weight], ...]
-  const total = pairs.reduce((s, p) => s + p[1], 0);
-  let r = rnd() * total;
-  for (const [v, w] of pairs) { r -= w; if (r <= 0) return v; }
-  return pairs[pairs.length - 1][0];
-};
+/** Weighted choice from [[value, weight], …]. */
+const weighted = (pairs) => { const t = pairs.reduce((s, p) => s + p[1], 0); let r = rnd() * t; for (const [v, w] of pairs) { r -= w; if (r <= 0) return v; } return pairs[pairs.length - 1][0]; };
+/** Fisher–Yates shuffle with the seeded generator (unbiased and independent of the JS engine's sort). */
+const shuffle = (arr) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const iso = (d) => d.toISOString().slice(0, 10);
 const addYears = (d, y) => { const x = new Date(d); x.setUTCMonth(x.getUTCMonth() + Math.round(y * 12)); return x; };
 
-// ---------- CSV writer ----------
-/** Records → CSV text in the given column order (same quoting rules as Scope.csv.serialize, kept local so the tool has no dependencies). */
-function csv(rows, headers) {
-  // One cell: blank for null / undefined, quoted when it contains a quote, comma or line break.
-  const esc = (v) => {
-    if (v === null || v === undefined) return '';
-    const s = String(v);
-    return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  };
-  const lines = [headers.map(esc).join(',')];
-  for (const r of rows) lines.push(headers.map((h) => esc(r[h])).join(','));
-  return lines.join('\n') + '\n';
+// ---------- grid helpers (rows[r][c] = Excel row r+1, column c+1) ----------
+const colIndex = (letters) => letters.toUpperCase().split('').reduce((n, ch) => n * 26 + (ch.charCodeAt(0) - 64), 0) - 1;
+/** Empty grid with `rows` rows. */
+const grid = (rows) => Array.from({ length: rows }, () => []);
+/** Put a value at an Excel cell reference like "C3". */
+function put(g, ref, value) {
+  const m = ref.match(/^([A-Z]+)(\d+)$/); const r = +m[2] - 1, c = colIndex(m[1]);
+  while (g.length <= r) g.push([]);
+  g[r][c] = value;
+}
+/** Write a list of values across a row starting at a cell. */
+function putRow(g, startRef, values) {
+  const m = startRef.match(/^([A-Z]+)(\d+)$/); const c0 = colIndex(m[1]); const r = +m[2] - 1;
+  while (g.length <= r) g.push([]);
+  values.forEach((v, i) => { if (v !== undefined && v !== null && v !== '') g[r][c0 + i] = v; });
+}
+/** RFC 4180 CSV (CRLF) of a grid; trailing empty cells trimmed per row. */
+function toCsv(g) {
+  const esc = (v) => { if (v === null || v === undefined) return ''; const s = String(v); return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const width = Math.max(...g.map((r) => r.length));
+  return g.map((r) => { const cells = []; for (let c = 0; c < width; c++) cells.push(esc(r[c])); while (cells.length && cells[cells.length - 1] === '') cells.pop(); return cells.join(','); }).join('\r\n') + '\r\n';
 }
 
 // ---------- reference data ----------
-// mapping_investors.csv: six group entities (fully attributed), two funds (partly attributed through
-// group_weight) and four third parties. Row order = the workbook's investor-column order.
+const REPORTING = new Date(Date.UTC(2026, 5, 30));
 const INVESTORS = [
-  { investor_id: 94301, investor_key: 'INV01', investor_label: 'Investor 1', investor_group: 'Group entity', group_weight: 1 },
-  { investor_id: 94302, investor_key: 'INV02', investor_label: 'Investor 2', investor_group: 'Group entity', group_weight: 1 },
-  { investor_id: 94303, investor_key: 'INV03', investor_label: 'Investor 3', investor_group: 'Group entity', group_weight: 1 },
-  { investor_id: 94304, investor_key: 'INV04', investor_label: 'Investor 4', investor_group: 'Group entity', group_weight: 1 },
-  { investor_id: 94305, investor_key: 'INV05', investor_label: 'Investor 5', investor_group: 'Group entity', group_weight: 1 },
-  { investor_id: 94306, investor_key: 'INV06', investor_label: 'Investor 6', investor_group: 'Group entity', group_weight: 1 },
-  { investor_id: 94310, investor_key: 'INV07', investor_label: 'Investor 7', investor_group: 'Fund', group_weight: 0.35 },
-  { investor_id: 94311, investor_key: 'INV08', investor_label: 'Investor 8', investor_group: 'Fund', group_weight: 0.20 },
-  { investor_id: 94320, investor_key: 'INV09', investor_label: 'Investor 9', investor_group: 'Third party', group_weight: 0 },
-  { investor_id: 94321, investor_key: 'INV10', investor_label: 'Investor 10', investor_group: 'Third party', group_weight: 0 },
-  { investor_id: 94322, investor_key: 'INV11', investor_label: 'Investor 11', investor_group: 'Third party', group_weight: 0 },
-  { investor_id: 94323, investor_key: 'INV12', investor_label: 'Investor 12', investor_group: 'Third party', group_weight: 0 },
-];
-
-// platform = weighted combination of investor columns (long format)
-const PLATFORMS = [
-  ['TOTAL', 'Total platform', '*', 1],
-  ['GROUP', 'Group (attributed)', 'Investor 1', 1], ['GROUP', 'Group (attributed)', 'Investor 2', 1],
-  ['GROUP', 'Group (attributed)', 'Investor 3', 1], ['GROUP', 'Group (attributed)', 'Investor 4', 1],
-  ['GROUP', 'Group (attributed)', 'Investor 5', 1], ['GROUP', 'Group (attributed)', 'Investor 6', 1],
-  ['GROUP', 'Group (attributed)', 'Investor 7', 0.35], ['GROUP', 'Group (attributed)', 'Investor 8', 0.20],
-  ['ALPHA', 'Platform Alpha', 'Investor 1', 1], ['ALPHA', 'Platform Alpha', 'Investor 2', 1],
-  ['ALPHA', 'Platform Alpha', 'Investor 3', 1], ['ALPHA', 'Platform Alpha', 'Investor 4', 1],
-  ['BETA', 'Platform Beta', 'Investor 5', 1], ['BETA', 'Platform Beta', 'Investor 6', 1], ['BETA', 'Platform Beta', 'Investor 7', 1],
-  ['FUND1LT', 'Fund I look-through (35%)', 'Investor 7', 0.35],
-  ['TPA', 'Investor 9', 'Investor 9', 1],
-  ['TPB', 'Investor 10', 'Investor 10', 1],
-  ['TPCD', 'Investors 11+12', 'Investor 11', 1], ['TPCD', 'Investors 11+12', 'Investor 12', 1],
-].map(([platform_id, platform_label, investor_label, weight]) => ({ platform_id, platform_label, investor_label, weight }));
-
-// ratings.csv: S&P / Fitch grades double as the internal scale; Moody's grades map notch for notch onto the same
-// numerics. Numeric rises as credit weakens; 610 (config ig_threshold) sits between BBB- (600) and BB+ (700).
-const RATINGS = [];
+  // holdings id, holdings name (investor column), fund name, portfolio currency
+  [94301, 'Investor 1', 'Investor 1 Portfolio', 'EUR'], [94302, 'Investor 2', 'Investor 2 Portfolio', 'EUR'], [94303, 'Investor 3', 'Investor 3 Portfolio', 'EUR'],
+  [94304, 'Investor 4', 'Investor 4 Portfolio', 'CHF'], [94305, 'Investor 5', 'Investor 5 Portfolio', 'GBP'], [94306, 'Investor 6', 'Investor 6 Portfolio', 'EUR'],
+  [94310, 'Investor 7', 'Investor 7 Fund', 'EUR'], [94311, 'Investor 8', 'Investor 8 Fund', 'EUR'],
+  [94320, 'Investor 9', 'Investor 9 Mandate', 'EUR'], [94321, 'Investor 10', 'Investor 10 Mandate', 'EUR'], [94322, 'Investor 11', 'Investor 11 Mandate', 'EUR'], [94323, 'Investor 12', 'Investor 12 Mandate', 'EUR'],
+].map(([id, holdingsName, fundName, ccy]) => ({ id, holdingsName, fundName, ccy }));
+// Mapping!H "Views (Portfolios / Investors)": the platform choices (Output!G8). Aggregates are defined in js/calc/aum.js CONFIG.views.
+const VIEWS = ['Total platform', 'Group (attributed)', 'Platform Alpha', 'Platform Beta', 'Fund I look-through (35%)', 'Investor 9', 'Investor 10', 'Investors 11+12'];
+// FX: units of currency per 1 EUR (the workbook divides amounts by this rate)
+const FX = { EUR: 1, GBP: 0.855, USD: 1.08, AUD: 1.63, SEK: 11.3, CHF: 0.96 };
+// Investment grade mapping (Mapping!AC:AE): S&P/Fitch and Moody's grades on one numeric scale; higher = weaker; IG ≤ 610
 const SP = ['AAA', 'AA+', 'AA', 'AA-', 'A+', 'A', 'A-', 'BBB+', 'BBB', 'BBB-', 'BB+', 'BB', 'BB-', 'B+', 'B', 'B-', 'CCC+', 'CCC'];
 const MO = ['Aaa', 'Aa1', 'Aa2', 'Aa3', 'A1', 'A2', 'A3', 'Baa1', 'Baa2', 'Baa3', 'Ba1', 'Ba2', 'Ba3', 'B1', 'B2', 'B3', 'Caa1', 'Caa2'];
-const NUM = [100, 200, 250, 300, 350, 400, 450, 500, 550, 600, 700, 750, 800, 850, 900, 950, 1000, 1050];
-SP.forEach((g, i) => { RATINGS.push({ grade: g, numeric: NUM[i], scale: 'SP_FITCH' }); RATINGS.push({ grade: g, numeric: NUM[i], scale: 'INTERNAL' }); });
-MO.forEach((g, i) => RATINGS.push({ grade: g, numeric: NUM[i], scale: 'MOODYS' }));
-RATINGS.push({ grade: 'NR', numeric: 0, scale: 'ALL' });
+const SCORE = [100, 200, 250, 300, 350, 400, 450, 500, 550, 600, 700, 750, 800, 850, 900, 950, 1000, 1050];
 
-// fx.csv: units of currency per 1 EUR; NOK is deliberately absent (see quirk 4 below).
-const FX = [
-  { currency: 'EUR', rate_per_eur: 1, investor_id: '', platform_id: '', note: 'base currency' },
-  { currency: 'GBP', rate_per_eur: 0.855, investor_id: '', platform_id: '', note: '' },
-  { currency: 'USD', rate_per_eur: 1.08, investor_id: '', platform_id: '', note: '' },
-  { currency: 'AUD', rate_per_eur: 1.63, investor_id: '', platform_id: '', note: '' },
-  { currency: 'SEK', rate_per_eur: 11.3, investor_id: '', platform_id: '', note: '' },
-  { currency: 'CHF', rate_per_eur: 0.96, investor_id: '', platform_id: '', note: '' },
-  { currency: 'GBP', rate_per_eur: 0.86, investor_id: 94305, platform_id: 'BETA', note: 'SYNTHETIC override: hedged rate for one investor on one platform (mirrors the workbook exception)' },
+const SECTORS = {
+  Renewables: ['Onshore wind', 'Offshore wind', 'Solar PV', 'Hydro'], Transport: ['Toll roads', 'Airports', 'Ports', 'Rail rolling stock'],
+  Digital: ['Fibre networks', 'Data centres', 'Telecom towers'], Utilities: ['Electricity networks', 'Water', 'Gas distribution'],
+  'Energy transition': ['District heating', 'Battery storage', 'EV charging'], Social: ['Hospitals (PPP)', 'Education (PPP)', 'Student accommodation'],
+};
+const COUNTRIES = [['United Kingdom', 'GBP', 'GB'], ['France', 'EUR', 'FR'], ['Germany', 'EUR', 'DE'], ['Spain', 'EUR', 'ES'], ['Netherlands', 'EUR', 'NL'], ['Italy', 'EUR', 'IT'], ['Ireland', 'EUR', 'IE'], ['Sweden', 'SEK', 'SE'], ['Australia', 'AUD', 'AU'], ['United States', 'USD', 'US'], ['Switzerland', 'CHF', 'CH'], ['Belgium', 'EUR', 'BE'], ['Portugal', 'EUR', 'PT'], ['Finland', 'EUR', 'FI']];
+const SPONSORS = ['Northwind Capital', 'Meridian Infrastructure', 'Helios Partners', 'Atlas Core Funds', 'Boreal Energy', 'Silverline Transport', 'Corvus Digital', 'Aquila Utilities', 'Terra Social Infra', 'Lumen Grid'];
+const STAFF = ['A. Martin', 'B. Okoro', 'C. Dubois', 'D. Schäfer', 'E. Rossi', 'F. Lindqvist'];
+const NAMES = ['Aurora', 'Beacon', 'Cascade', 'Delta', 'Ember', 'Falcon', 'Granite', 'Harbour', 'Iris', 'Juniper', 'Kestrel', 'Lumen', 'Meridian', 'Nimbus', 'Orion', 'Pioneer', 'Quartz', 'Ridge', 'Summit', 'Tidal', 'Umbra', 'Vertex', 'Willow', 'Zenith', 'Alder', 'Birch', 'Cobalt', 'Dune', 'Echo', 'Fjord', 'Glacier', 'Horizon', 'Indigo', 'Jade', 'Kite', 'Lantern', 'Mistral', 'Nova', 'Opal', 'Prism', 'Quill', 'Rowan', 'Sable', 'Tundra', 'Ultra', 'Vale', 'Wren', 'Yarrow'];
+
+// ---------- Holdings column headers (row 3 from column B) and their output names (row 2, via Mapping!C:D) ----------
+const HOLDINGS_HEADERS = [
+  'Mapping', 'Unique Identifier', 'Investor Code', 'Identification ID', 'Code Name', 'Reporting Date', 'Model Portfolio', 'Portfolio', 'Security ID', 'Security Name',
+  'Portfolio Name', 'Model Portfolio Name', 'Portfolio Group', 'Current Underlying Amount PC', 'Current Underlying Amount RC', 'Portfolio Currency', 'Security Type Name', 'RA_Bullet',
+  'Loan Code', 'Asset Type RA', 'RA Country', 'RA Asset Country Name', 'Underlying Asset Type', 'CRDB Code', 'WAL', 'Quotation Currency', 'FX Rate EC', 'Forex',
+  'Initial Commitment Amount CCY', 'Gross Notional PC', 'Gross Notional RC', 'Balance Funded %', 'Balance Book Value PC', 'Balance Nominal/Number', 'Balance Unfunded Amount',
+  'RA_Commitment QC', 'Current Drawn Amount CCY', 'Current Drawn Amount PC', 'RA_Referentiel Rate', 'Yield', 'Yield EUR', 'Yield GBP', 'Purchase Price %', 'Clean Price for Weight',
+  'Purchase Date', 'Maturity Date', 'Next Coupon Date Format', 'Parent Issuer ID', 'Parent Issuer Name', 'RA_Listed Borrower', 'Issuer Name', 'Issuer', 'Issuer Country', 'Group Name',
+  'LEI', 'TAB Status', 'CR Status', 'CR Limit', 'Current NDS', 'Underlying Parent Issuer ID', 'RA Commitment PC', 'RA Commitment RC', 'Rate Type', 'Seniority', 'STEF Level',
+  'Modified Duration YTM', 'Time to Maturity', 'RA_Floored', 'Make Whole Case', 'Nature', 'RA Ident', 'FM Controller Infra', 'FMCG Controller', 'Next Rate (Index)',
+  'Interest Payment Frequency', 'Basis', 'All-in Spread at Acquisition', 'Spread', 'Next Coupon', 'Index', 'Internal Current Rating', 'Ext Sec Group_Rating_Closing',
+  'Rating Fitch', 'Rating S&P', "Rating Moody's", 'Last Compliance Certification Date',
+  'ICR Limit', 'ICR Current', 'ICR Day One', 'ICR Status', 'ICR Trend', 'ICR -3m', 'ICR -6m', 'ICR -9m', 'ICR -1y', 'ICR -2y',
+  'LLCR Cash Trap', 'LLCR Covenant (RA)', 'LLCR Status', 'LTV -3m', 'LTV -6m', 'LTV -9m', 'LTV -1y', 'LTV -2y', 'LTV Current', 'LTV Day One', 'LTV Limit', 'LTV Status', 'LTV Trend',
+  'LEV Cash Trap', 'LEV Limit', 'LEV Status', 'RA_LVG_D1', 'RA_COD_LVG', 'RA_NDRAB_CT', 'RA_COD_NDRAB', 'RA_DSC_D1', 'RA_COD_DSC', 'PLCR Cash Trap',
+  'Cash Trap LTV Covenant', 'Cash Trap ICR Covenant', 'Cash Trap DY Covenant', 'NAH Cash Trap', 'NDS Cash Trap', 'GR Cash Trap', 'CR Cash Trap', 'RA_CR_D1', 'RA_ICR_D1',
+  'RA_COD_ICR', 'RA_COD_CR', 'PLCR Status', 'PLCR Covenant (RA)', 'DSC Trans', 'DSC Status', 'DSC Limit', 'DSC Cash Trap', 'RA_DC_CT', 'RA_DC_COV', 'DSC Day One',
+  'DSC -3m', 'DSC -6m', 'DSC -9m', 'DSC -1y', 'DSC -2y', 'RA_COD_DC', 'DC Status', 'RA_COD_DY', 'DY Trend', 'DY Status', 'DY Limit', 'RA_DY_D1', 'DY -3m', 'DY -6m',
+  'DY -9m', 'DY -1y', 'DY -2y', 'GR Status', 'GR Covenant', 'RA_LTV_D1', 'RA_Infra Risk Profile', 'RA_Infra Rating', 'RA_COD_LTV', 'NAH Status', 'NAH Covenants', 'Current NAH',
+  'NDS Status', 'NDS Covenant', 'Current FAV', 'Current PLCR (RA)', 'Current LLCR (RA)', 'Revenue -1y', 'Revenue -2y', 'RA EBITDA', 'EBITDA -1y', 'EBITDA -2y',
+  'FO_RA_LTV Covenant', 'FO_RA_ICR Covenant', 'FO_RA_Current ICR', 'FO_RA_Current LTV', 'RA Revenue', 'FAV Cash Trap', 'FAV Covenant', 'FAV Status',
 ];
-
-// config.csv: engine settings plus illustrative thresholds for planned pages; each row carries an explanatory note.
-const CONFIG = [
-  ['base_currency', 'EUR', 'All FX rates are quoted as units of currency per 1 EUR'],
-  ['ig_threshold', '610', 'Rating numeric strictly above this = SUB IG (workbook rule)'],
-  ['rating_selection', 'worst', 'External grade = MAX numeric across Fitch/Moodys/S&P (numeric rises as credit weakens); current = MAX(internal, external) unless internal is NR'],
-  ['single_portfolio_token', 'SINGLE', 'When portfolio_id equals this token, use portfolio_alt_id'],
-  ['amount_display_unit', '1000000', 'Output amounts are shown in millions'],
-  ['maturity_buckets', '0-3,3-5,5-10,10-20,20+', 'Years to maturity from reporting date'],
-  ['reporting_date_rule', 'min_as_of', 'Reporting date = MIN(position as_of_date), as in the workbook'],
-  ['dataset_label', 'SYNTHETIC DEMO', 'Shown in the UI so demo data is never mistaken for production'],
-  ['attribution_label', 'Group', 'Name of the attributed investor group used in every UI label (e.g. "Group attributed", "Group share of book")'],
-  ['limit_single_name_pct', '10', 'ILLUSTRATIVE threshold for the concentration page: largest single asset as % of exposure (not a real mandate limit)'],
-  ['limit_sponsor_pct', '20', 'ILLUSTRATIVE: largest sponsor as % of exposure'],
-  ['limit_sector_pct', '35', 'ILLUSTRATIVE: largest sector as % of exposure'],
-  ['limit_country_pct', '30', 'ILLUSTRATIVE: largest country as % of exposure'],
-  ['limit_sub_ig_pct', '25', 'ILLUSTRATIVE: sub-investment-grade share of exposure'],
-  ['limit_non_base_ccy_pct', '40', 'ILLUSTRATIVE: share of exposure not in the base currency'],
-].map(([key, value, note]) => ({ key, value, note }));
-
-// mapping_columns.csv: source-system header → canonical field (the workbook's Mapping C:D renames), with required flags.
-const COLUMNS = [
-  ['Portfolio', 'portfolio_id', 'Y', 'Investor/portfolio identifier (Holdings col G)'],
-  ['Alt Portfolio', 'portfolio_alt_id', 'N', 'Used when Portfolio = SINGLE (Holdings col H)'],
-  ['Security ID', 'holding_id', 'Y', 'Holding identifier (Holdings col I)'],
-  ['Security Name', 'security_name', 'N', 'Holdings col J'],
-  ['Position Date', 'as_of_date', 'Y', 'Holdings col F'],
-  ['Ccy', 'currency', 'Y', ''],
-  ['Nominal Amount', 'nominal', 'Y', 'Calculations CO'],
-  ['Drawn Amount', 'drawn', 'Y', 'Calculations CQ'],
-  ['Commitment Amount', 'commitment', 'N', 'Calculations CS'],
-  ['Internal Rating', 'internal_grade', 'N', ''],
-  ['Fitch Rating', 'fitch', 'N', ''],
-  ['Moodys Rating', 'moodys', 'N', ''],
-  ['S&P Rating', 'sp', 'N', ''],
-  ['Funding Date', 'funding_date', 'N', ''],
-  ['Maturity Date', 'maturity_date', 'N', ''],
-  ['Rate Type', 'coupon_type', 'N', 'Fixed → Fixed, anything else → Floating'],
-  ['Coupon Rate', 'coupon', 'N', 'percent'],
-  ['Margin Bps', 'margin_bps', 'N', ''],
-  ['Instrument', 'instrument_type', 'N', ''],
-].map(([source_header, canonical_field, required, note]) => ({ source_header, canonical_field, required, note }));
+// Mapping!C:D References: Holdings column → output name used by the calculations (row 2 of Holdings). Unlisted columns show #N/A in row 2.
+const REFERENCES = [
+  ['Reporting Date', 'Reporting Date'], ['Model Portfolio', 'Model Portfolio'], ['Portfolio', 'Portfolio'], ['Security ID', 'Security ID'], ['Security Name', 'Security Name'],
+  ['Portfolio Currency', 'Portfolio Currency'], ['Security Type Name', 'Instrument'], ['RA_Bullet', 'Bullet'], ['RA Asset Country Name', 'Country'], ['WAL', 'WAL'],
+  ['Quotation Currency', 'Currency'], ['FX Rate EC', 'FX Rate'], ['Initial Commitment Amount CCY', 'Commitment'], ['RA_Commitment QC', 'Nominal'],
+  ['Current Drawn Amount CCY', 'Drawn'], ['RA Commitment RC', 'Nominal RC'], ['Purchase Date', 'Purchase Date'], ['Maturity Date', 'Maturity Date'],
+  ['Parent Issuer Name', 'Parent Issuer'], ['Issuer Country', 'Issuer Country'], ['Rate Type', 'Rate Type'], ['Seniority', 'Seniority'], ['Time to Maturity', 'Time to Maturity'],
+  ['All-in Spread at Acquisition', 'Spread at Acquisition'], ['Spread', 'Spread'], ['Internal Current Rating', 'Internal Rating'], ['Ext Sec Group_Rating_Closing', 'Closing Rating'],
+  ['Rating Fitch', 'Fitch'], ['Rating S&P', 'S&P'], ["Rating Moody's", "Moody's"], ['ICR Current', 'ICR'], ['LTV Current', 'LTV'], ['DSC Status', 'DSCR Status'],
+];
+const REF_MAP = new Map(REFERENCES);
 
 // ---------- assets ----------
-// Sector → subsectors, country → local currency, and name pools for sponsors and asset names (all fictional).
-const SECTORS = {
-  'Renewables': ['Onshore wind', 'Offshore wind', 'Solar PV', 'Hydro'],
-  'Transport': ['Toll roads', 'Airports', 'Ports', 'Rail rolling stock'],
-  'Digital': ['Fibre networks', 'Data centres', 'Telecom towers'],
-  'Utilities': ['Electricity networks', 'Water', 'Gas distribution'],
-  'Energy transition': ['District heating', 'Battery storage', 'EV charging'],
-  'Social': ['Hospitals (PPP)', 'Education (PPP)', 'Student accommodation'],
-};
-const COUNTRIES = [['United Kingdom', 'GBP'], ['France', 'EUR'], ['Germany', 'EUR'], ['Spain', 'EUR'], ['Netherlands', 'EUR'], ['Italy', 'EUR'], ['Ireland', 'EUR'], ['Sweden', 'SEK'], ['Australia', 'AUD'], ['United States', 'USD'], ['Switzerland', 'CHF'], ['Belgium', 'EUR'], ['Portugal', 'EUR'], ['Finland', 'EUR']];
-const SPONSORS = ['Northwind Capital', 'Meridian Infrastructure', 'Helios Partners', 'Atlas Core Funds', 'Boreal Energy', 'Silverline Transport', 'Corvus Digital', 'Aquila Utilities', 'Terra Social Infra', 'Lumen Grid'];
-const NAMES1 = ['Aurora', 'Beacon', 'Cascade', 'Delta', 'Ember', 'Falcon', 'Granite', 'Harbour', 'Iris', 'Juniper', 'Kestrel', 'Lumen', 'Meridian', 'Nimbus', 'Orion', 'Pioneer', 'Quartz', 'Ridge', 'Summit', 'Tidal', 'Umbra', 'Vertex', 'Willow', 'Zenith', 'Alder', 'Birch', 'Cobalt', 'Dune', 'Echo', 'Fjord', 'Glacier', 'Horizon', 'Indigo', 'Jade', 'Kite', 'Lantern', 'Mistral', 'Nova', 'Opal', 'Prism', 'Quill', 'Rowan', 'Sable', 'Tundra', 'Ultra', 'Vale', 'Wren', 'Yarrow'];
-
-// Reporting date of the synthetic extract (every position's as_of_date).
-const REPORTING = new Date(Date.UTC(2026, 5, 30));
-const assets = [];
-const mappingAssets = [];
-const hardcoded = [];
-const esg = [];
-const holdingsRows = [];
-let holdingSeq = 100200;
-let isinSeq = 4400100;
-
 const sectorKeys = Object.keys(SECTORS);
-// One iteration per asset: terms, ratings, mapping rows (one per tranche), hardcoded and ESG attributes, then holdings rows.
+const assets = [];
+let secSeq = 100200;
 for (let i = 0; i < 48; i++) {
-  const code = 'INF-' + String(i + 1).padStart(3, '0');
   const sector = sectorKeys[i % sectorKeys.length];
   const subsector = pick(SECTORS[sector]);
-  const [country, ccy] = pick(COUNTRIES);
-  const name = NAMES1[i] + ' ' + subsector.split(' ')[0];
-  const greenfield = weighted([['Brownfield', 3], ['Greenfield', 1]]);
+  const [country, ccy, iso2] = pick(COUNTRIES);
+  const project = NAMES[i] + ' ' + subsector.split(' ')[0];
+  const codeName = NAMES[i].toUpperCase().slice(0, 4) + String(i + 1).padStart(2, '0');
   const funding = new Date(Date.UTC(2015 + Math.floor(rnd() * 11), Math.floor(rnd() * 12), 1 + Math.floor(rnd() * 27)));
   let tenor = roundTo(between(5, 28), 0.5);
-  // a live book holds no matured assets: push maturity at least ~1.5y past the reporting date
-  while (addYears(funding, tenor) < addYears(REPORTING, 1.5)) tenor += 1;
+  while (addYears(funding, tenor) < addYears(REPORTING, 1.5)) tenor += 1; // a live book: nothing has matured
   const maturity = addYears(funding, tenor);
   const rateType = weighted([['Fixed', 1], ['Floating', 1]]);
-  const repayment = weighted([['Amortising', 3], ['Bullet', 2]]);
-  const instrument = weighted([['Loan', 3], ['Notes', 1]]);
-  // Internal grade skewed towards the BBB area; external grades, where present, sit within a notch of it.
-  const internalIdx = Math.floor(weighted([[3, 1], [5, 2], [7, 3], [8, 4], [9, 4], [10, 2], [11, 1], [12, 1]]));
-  const internalGrade = SP[internalIdx];
-  const hasExt = rnd() < 0.55;
-  // External grade index: the internal notch, or one notch either side.
-  const extIdx = () => Math.max(0, Math.min(SP.length - 1, internalIdx + Math.floor(between(-1, 2))));
-  const fitch = hasExt && rnd() < 0.6 ? SP[extIdx()] : 'NR';
-  const moodys = hasExt && rnd() < 0.5 ? MO[extIdx()] : 'NR';
-  const sp = hasExt && rnd() < 0.5 ? SP[extIdx()] : 'NR';
-  // Margin moves ~22 bps per notch relative to BBB+ (wider for weaker grades), so margin and rating correlate as in a real book.
-  const spread = roundTo(between(120, 340) + (internalIdx - 7) * 22, 5);
-  const coupon = rateType === 'Fixed' ? +(between(2.2, 5.6)).toFixed(3) : '';
-  const totalSize = roundTo(between(80, 900), 10) * 1e6; // total transaction size
+  const bullet = weighted([['N', 3], ['Y', 2]]);
+  const instrument = weighted([['Loan', 3], ['Private Placement Note', 1]]);
+  const gi = Math.floor(weighted([[3, 1], [5, 2], [7, 3], [8, 4], [9, 4], [10, 2], [11, 1], [12, 1]]));
+  const ext = rnd() < 0.55;
+  const extIdx = () => Math.max(0, Math.min(SP.length - 1, gi + Math.floor(between(-1, 2))));
   const tranches = rnd() < 0.2 ? 2 : 1;
-  const protectionEnd = repayment === 'Bullet' && rnd() < 0.5 ? iso(addYears(funding, tenor * 0.4)) : '';
-  const watch = weighted([['No', 10], ['Watch', 2], ['Intensive', 1]]);
-  const ghgScope12 = Math.round(between(500, 90000));
-  const asset = { code, name, sector, subsector, country, ccy, funding, maturity, tenor, rateType, repayment, instrument, internalGrade, fitch, moodys, sp, spread, coupon, totalSize, tranches, greenfield, watch };
-  assets.push(asset);
-
-  const holdingIds = [];
-  for (let t = 0; t < tranches; t++) {
-    const hid = 'H' + (holdingSeq++);
-    holdingIds.push(hid);
-    mappingAssets.push({ holding_id: hid, asset_code: code, asset_name: name, code_name: NAMES1[i].toUpperCase().slice(0, 4) + String(i + 1).padStart(2, '0'), security_id: 'XS' + (isinSeq++) + (t ? 'B' : 'A'), tranche: tranches > 1 ? 'Tranche ' + String.fromCharCode(65 + t) : '' });
-  }
-  hardcoded.push({
-    asset_code: code, sector, subsector, country, region: ['United Kingdom', 'Ireland'].includes(country) ? 'UK & Ireland' : ['Australia', 'United States'].includes(country) ? 'Rest of world' : 'Continental Europe',
-    sponsor: pick(SPONSORS), greenfield_brownfield: greenfield, repayment_type: repayment, cash_flow_type: repayment === 'Bullet' ? 'Bullet' : (rnd() < 0.5 ? 'Sculpted' : 'Annuity'),
-    instrument, origination: weighted([['Primary', 4], ['Secondary', 1]]), deal_year: funding.getUTCFullYear(), upfront_fee_bps: roundTo(between(25, 150), 5),
-    protection_end_date: protectionEnd, watchlist: watch, deal_lead: pick(['A. Martin', 'B. Okoro', 'C. Dubois', 'D. Schäfer', 'E. Rossi', 'F. Lindqvist']),
-    covenant_type: weighted([['DSCR', 5], ['LLCR', 2], ['Leverage', 2]]), lockup_level: (1.05 + rnd() * 0.25).toFixed(2), default_level: (1.0 + rnd() * 0.1).toFixed(2),
-    wal_years: roundTo(Math.max(1, tenor * between(0.45, 0.75)), 0.1), total_transaction_size: totalSize,
-    description: `${greenfield} ${subsector.toLowerCase()} ${instrument.toLowerCase()} financing in ${country}. SYNTHETIC.`,
-  });
-  esg.push({
-    asset_code: code, esg_score: Math.round(between(45, 92)), cbi_taxonomy: sector === 'Renewables' ? 'Aligned' : weighted([['Aligned', 1], ['Partially aligned', 2], ['Not aligned', 2]]),
-    ghg_scope1_t: Math.round(ghgScope12 * 0.6), ghg_scope2_t: Math.round(ghgScope12 * 0.4), ghg_scope3_t: Math.round(ghgScope12 * between(1.5, 6)),
-    ghg_intensity_t_per_eurm: Math.round(ghgScope12 / (totalSize / 1e6)), green_loan: sector === 'Renewables' || (sector === 'Energy transition' && rnd() < 0.7) ? 'Y' : 'N',
-    sfdr_article: weighted([['Article 8', 3], ['Article 9', 1], ['Article 6', 1]]), data_coverage: weighted([['Reported', 3], ['Estimated', 2]]),
-  });
-
-  // positions: 2..6 investors participate; the platform holds 15–55 % of the transaction, split between the chosen
-  // investors by random weights and, for two-tranche assets, 60 / 40 between tranches. Greenfield assets are partly drawn.
-  const nInv = 2 + Math.floor(rnd() * 5);
-  const chosen = [...INVESTORS].sort(() => rnd() - 0.5).slice(0, nInv);
-  const platformShare = between(0.15, 0.55); // share of total transaction held by the platform
-  const platformAmt = totalSize * platformShare;
-  const rawW = chosen.map(() => between(0.5, 2));
-  const wSum = rawW.reduce((a, b) => a + b, 0);
-  const drawnRatio = greenfield === 'Greenfield' ? between(0.35, 0.8) : between(0.9, 1);
-  chosen.forEach((inv, k) => {
-    holdingIds.forEach((hid, t) => {
-      const share = (rawW[k] / wSum) * (tranches > 1 ? (t === 0 ? 0.6 : 0.4) : 1);
-      const nominal = roundTo(platformAmt * share, 1000);
-      const drawn = roundTo(nominal * drawnRatio, 1000);
-      const commitment = repayment === 'Bullet' && greenfield === 'Greenfield' ? roundTo(nominal * 1.05, 1000) : nominal;
-      holdingsRows.push({
-        'Portfolio': inv.investor_id, 'Alt Portfolio': '', 'Security ID': hid, 'Security Name': name + (tranches > 1 ? ' ' + String.fromCharCode(65 + t) : ''),
-        'Position Date': iso(REPORTING), 'Ccy': ccy, 'Nominal Amount': nominal, 'Drawn Amount': drawn, 'Commitment Amount': commitment,
-        'Internal Rating': internalGrade, 'Fitch Rating': fitch, 'Moodys Rating': moodys, 'S&P Rating': sp,
-        'Funding Date': iso(funding), 'Maturity Date': iso(maturity), 'Rate Type': rateType, 'Coupon Rate': coupon, 'Margin Bps': spread,
-        'Instrument': instrument, 'Custodian': 'CUST-' + (1 + Math.floor(rnd() * 3)), 'Book': 'IDB',
-      });
-    });
+  const ids = Array.from({ length: tranches }, () => String(secSeq++));
+  assets.push({
+    i, sector, subsector, country, ccy, iso2, project, codeName, funding, maturity, tenor, rateType, bullet, instrument,
+    internal: SP[gi], fitch: ext && rnd() < 0.6 ? SP[extIdx()] : 'NR', moodys: ext && rnd() < 0.5 ? MO[extIdx()] : 'NR', sp: ext && rnd() < 0.5 ? SP[extIdx()] : 'NR',
+    spread: roundTo(between(120, 340) + (gi - 7) * 22, 5), size: roundTo(between(80, 900), 10) * 1e6, ids, identificationId: ids[0],
+    transactionGroup: 'TG-' + String(Math.floor(i / 2) + 1).padStart(3, '0'), sponsor: pick(SPONSORS), staff: pick(STAFF),
+    watch: weighted([['No', 10], ['Watch', 2], ['Intensive', 1]]), greenfield: weighted([['Brownfield', 3], ['Greenfield', 1]]),
+    cashflow: bullet === 'Y' ? 'Bullet' : (rnd() < 0.5 ? 'Sculpted' : 'Annuity'), origination: weighted([['Primary', 4], ['Secondary', 1]]),
+    upfrontBps: roundTo(between(25, 150), 5), protectionEnd: bullet === 'Y' && rnd() < 0.5 ? iso(addYears(funding, tenor * 0.4)) : '',
+    icDate: iso(addYears(funding, -0.15)), wal: +(Math.max(1, tenor * between(0.45, 0.75))).toFixed(1),
+    esg: { e: Math.round(between(40, 95)), s: Math.round(between(40, 95)), g: Math.round(between(45, 95)), ghg: Math.round(between(500, 90000)) },
   });
 }
 
-// ---------- deliberate data quirks (so validation has something to show) ----------
-// 1) SINGLE portfolio token with alt id
-holdingsRows[5]['Portfolio'] = 'SINGLE'; holdingsRows[5]['Alt Portfolio'] = 94303;
-// 2) two positions whose holding id is not in mapping (the "broken rows" case)
-holdingsRows.push({ ...holdingsRows[10], 'Security ID': 'H999001', 'Security Name': 'Unmapped holding 1', 'Nominal Amount': 25000000, 'Drawn Amount': 25000000, 'Commitment Amount': 25000000 });
-holdingsRows.push({ ...holdingsRows[11], 'Security ID': 'H999002', 'Security Name': 'Unmapped holding 2', 'Nominal Amount': 18000000, 'Drawn Amount': 18000000, 'Commitment Amount': 18000000 });
-// 3) investor not in mapping
-holdingsRows.push({ ...holdingsRows[20], 'Portfolio': 99999 });
-// 4) currency without FX rate
-holdingsRows.push({ ...holdingsRows[30], 'Security ID': mappingAssets[3].holding_id, 'Security Name': mappingAssets[3].asset_name, 'Ccy': 'NOK', 'Portfolio': 94321, 'Nominal Amount': 12000000, 'Drawn Amount': 12000000, 'Commitment Amount': 12000000 });
-// 5) drawn > nominal on one row
-holdingsRows[40]['Drawn Amount'] = holdingsRows[40]['Nominal Amount'] + 500000;
-// 6) rating inconsistency across positions of one asset
-holdingsRows[60]['Internal Rating'] = 'BB';
-// 7) rating grade string with odd spacing / dash ("BBB –" must normalise to the known grade BBB-)
-holdingsRows[70]['Fitch Rating'] = 'BBB –';
-// 8) missing maturity date
-holdingsRows[80]['Maturity Date'] = '';
+// ---------- positions (one Holdings row per investor × security) ----------
+const positions = [];
+for (const a of assets) {
+  const chosen = shuffle(INVESTORS).slice(0, 2 + Math.floor(rnd() * 5));
+  const platformShare = between(0.15, 0.55), drawnRatio = a.greenfield === 'Greenfield' ? between(0.35, 0.8) : between(0.9, 1);
+  const w = chosen.map(() => between(0.5, 2)), ws = w.reduce((s, x) => s + x, 0);
+  chosen.forEach((inv, k) => a.ids.forEach((sec, t) => {
+    const share = (w[k] / ws) * (a.ids.length > 1 ? (t === 0 ? 0.6 : 0.4) : 1);
+    const nominal = roundTo(a.size * platformShare * share, 1000);
+    positions.push({ a, inv, sec, tranche: t, nominal, drawn: roundTo(nominal * drawnRatio, 1000), commitment: a.bullet === 'Y' && a.greenfield === 'Greenfield' ? roundTo(nominal * 1.05, 1000) : nominal,
+      modelPortfolio: String(inv.id), portfolio: String(inv.id), ccy: a.ccy, internal: a.internal, fitch: a.fitch, moodys: a.moodys, sp: a.sp, maturity: iso(a.maturity), securityName: a.project + (a.ids.length > 1 ? ' ' + 'AB'[t] : '') });
+  }));
+}
+// ---------- deliberate data quirks, so the validation pages have something to show ----------
+positions[5].modelPortfolio = 'SINGLE'; positions[5].portfolio = '94303';                                                   // SINGLE rule → uses Portfolio
+const orphan = (p, sec, name) => Object.assign({}, p, { sec, securityName: name, nominal: 25e6, drawn: 25e6, commitment: 25e6, orphan: true });
+positions.push(orphan(positions[10], '999001', 'Unmapped Holding One'));                                                     // security not in Mapping
+positions.push(orphan(positions[11], '999002', 'Unmapped Holding Two'));
+positions.push(Object.assign({}, positions[20], { modelPortfolio: '99999', portfolio: '99999' }));                             // investor not in Funding Name
+positions.push(Object.assign({}, positions[30], { ccy: 'NOK', inv: INVESTORS[9], modelPortfolio: '94321', portfolio: '94321', nominal: 12e6, drawn: 12e6, commitment: 12e6 })); // no FX rate
+positions[40].drawn = positions[40].nominal + 500000;                                                                         // drawn > nominal
+positions[60].internal = 'BB';                                                                                                // ratings differ within one asset
+positions[70].fitch = 'BBB –';                                                                                               // odd spacing / dash in a grade
+positions[80].maturity = '';                                                                                                  // missing maturity date
+const inactiveAsset = assets[47];                                                                                             // in Holdings but not in Active Assets
 
+// ---------- build the Holdings sheet ----------
+const H = grid(3);
+putRow(H, 'B2', HOLDINGS_HEADERS.map((hd) => (REF_MAP.has(hd) ? REF_MAP.get(hd) : '#N/A')));
+putRow(H, 'B3', HOLDINGS_HEADERS);
+const secToAsset = new Map(); assets.forEach((a) => a.ids.forEach((s) => secToAsset.set(s, a)));
+positions.forEach((p, n) => {
+  const a = p.a, rate = FX[p.ccy];
+  const investorCode = p.modelPortfolio === 'SINGLE' ? p.portfolio : p.modelPortfolio;
+  const mapped = p.orphan ? null : secToAsset.get(p.sec);
+  const icr = +(between(1.2, 3.5)).toFixed(2), ltv = +(between(0.45, 0.85)).toFixed(2), dscr = +(between(1.05, 1.9)).toFixed(2);
+  const row = {
+    'Mapping': mapped && a !== inactiveAsset ? a.codeName : '#N/A', 'Unique Identifier': investorCode + 'x' + p.sec, 'Investor Code': investorCode,
+    'Identification ID': mapped ? mapped.identificationId : '#N/A', 'Code Name': mapped ? mapped.codeName : '#N/A',
+    'Reporting Date': iso(REPORTING), 'Model Portfolio': p.modelPortfolio, 'Portfolio': p.portfolio, 'Security ID': p.sec, 'Security Name': p.securityName,
+    'Portfolio Name': p.inv.fundName, 'Model Portfolio Name': p.inv.fundName, 'Portfolio Group': 'Infra Debt',
+    'Current Underlying Amount PC': p.drawn, 'Current Underlying Amount RC': rate ? +(p.drawn / rate).toFixed(2) : '', 'Portfolio Currency': p.inv.ccy,
+    'Security Type Name': a.instrument, 'RA_Bullet': a.bullet, 'Loan Code': 'L' + p.sec, 'Asset Type RA': 'Infrastructure Debt', 'RA Country': a.iso2, 'RA Asset Country Name': a.country,
+    'Underlying Asset Type': a.subsector, 'CRDB Code': 'CR' + (1000 + a.i), 'WAL': a.wal, 'Quotation Currency': p.ccy, 'FX Rate EC': rate || '', 'Forex': p.ccy === 'EUR' ? 'N' : 'Y',
+    'Initial Commitment Amount CCY': p.commitment, 'Gross Notional PC': p.nominal, 'Gross Notional RC': rate ? +(p.nominal / rate).toFixed(2) : '',
+    'Balance Funded %': p.nominal ? +(p.drawn / p.nominal).toFixed(4) : '', 'Balance Book Value PC': p.drawn, 'Balance Nominal/Number': p.drawn, 'Balance Unfunded Amount': p.nominal - p.drawn,
+    'RA_Commitment QC': p.nominal, 'Current Drawn Amount CCY': p.drawn, 'Current Drawn Amount PC': p.drawn, 'RA_Referentiel Rate': a.rateType === 'Fixed' ? '' : 'EURIBOR 6M',
+    'Yield': +(between(2.5, 6.5)).toFixed(3), 'Yield EUR': +(between(2.5, 6.5)).toFixed(3), 'Yield GBP': +(between(2.5, 6.5)).toFixed(3), 'Purchase Price %': 100, 'Clean Price for Weight': 100,
+    'Purchase Date': iso(a.funding), 'Maturity Date': p.maturity, 'Next Coupon Date Format': iso(new Date(Date.UTC(2026, 8, 30))), 'Parent Issuer ID': 'PI' + (2000 + a.i), 'Parent Issuer Name': a.sponsor,
+    'RA_Listed Borrower': 'N', 'Issuer Name': a.project + ' Finance Ltd', 'Issuer': a.project + ' Finance', 'Issuer Country': a.country, 'Group Name': a.sponsor, 'LEI': '529900SYNTH' + String(a.i).padStart(9, '0'),
+    'RA Commitment PC': p.nominal, 'RA Commitment RC': rate ? +(p.nominal / rate).toFixed(2) : '', 'Rate Type': a.rateType, 'Seniority': 'Senior Secured', 'Modified Duration YTM': +(a.tenor * 0.6).toFixed(2), 'Time to Maturity': +((a.maturity - REPORTING) / (365.25 * 864e5)).toFixed(2),
+    'RA_Floored': a.rateType === 'Floating' ? 'Y' : 'N', 'Make Whole Case': a.protectionEnd ? 'Y' : 'N', 'Nature': 'Debt', 'RA Ident': 'RA' + p.sec, 'FM Controller Infra': a.staff, 'FMCG Controller': pick(STAFF),
+    'Interest Payment Frequency': pick(['Quarterly', 'Semi-annual']), 'Basis': pick(['ACT/360', '30/360']), 'All-in Spread at Acquisition': a.spread, 'Spread': a.spread, 'Index': a.rateType === 'Fixed' ? '' : 'EURIBOR',
+    'Internal Current Rating': p.internal, 'Ext Sec Group_Rating_Closing': a.internal, 'Rating Fitch': p.fitch, 'Rating S&P': p.sp, "Rating Moody's": p.moodys,
+    'Last Compliance Certification Date': iso(new Date(Date.UTC(2026, 2, 31))),
+    'ICR Limit': 1.2, 'ICR Current': icr, 'ICR Day One': +(icr * 1.05).toFixed(2), 'ICR Status': icr > 1.3 ? 'OK' : 'Watch', 'LTV Current': ltv, 'LTV Limit': 0.85, 'LTV Status': ltv < 0.8 ? 'OK' : 'Watch',
+    'DSC Status': dscr > 1.15 ? 'OK' : 'Watch', 'DSC Limit': 1.05, 'DSC Day One': +(dscr * 1.04).toFixed(2), 'Current FAV': '', 'RA EBITDA': Math.round(a.size * between(0.08, 0.14)),
+  };
+  putRow(H, 'B' + (4 + n), HOLDINGS_HEADERS.map((hd) => (row[hd] === undefined ? '' : row[hd])));
+});
+// workbook padding: copied formula rows below the data, showing "0x0" placeholders in the formula columns
+for (let k = 0; k < 15; k++) putRow(H, 'B' + (4 + positions.length + k), ['#N/A', '0x0', 0, '#N/A', '#N/A']);
 
-// fund look-through: who owns the units of each fund investor column (SYNTHETIC).
-// Group-entity holder shares sum to the fund's group_weight so attribution and look-through agree.
-const LOOKTHROUGH = [
-  ['Investor 7', 'Investor 1', 0.15, 'Group entity units'], ['Investor 7', 'Investor 3', 0.10, 'Group entity units'], ['Investor 7', 'Investor 5', 0.10, 'Group entity units'],
-  ['Investor 7', 'Investor 9', 0.25, 'Third-party units'],
-  ['Investor 8', 'Investor 2', 0.12, 'Group entity units'], ['Investor 8', 'Investor 6', 0.08, 'Group entity units'],
-  ['Investor 8', 'Investor 10', 0.30, 'Third-party units'],
-].map(([fund_label, holder_label, share, note]) => ({ fund_label, holder_label, share, note }));
+// ---------- build the Mapping sheet ----------
+const M = grid(3);
+put(M, 'C2', 'References'); putRow(M, 'C3', ['Columns in Holdings tab', 'Output Names']);
+REFERENCES.forEach((r, n) => putRow(M, 'C' + (4 + n), r));
+put(M, 'H2', 'Active Assets'); putRow(M, 'H3', ['Views (Portfolios / Investors)', 'List', 'Mapping', 'Active Assets Output', 'Selected Assets', 'Number']);
+VIEWS.forEach((v, n) => put(M, 'H' + (4 + n), v));
+const listRows = []; positions.forEach((p) => { if (!p.orphan && p.a !== inactiveAsset && !listRows.some((x) => x[0] === p.securityName)) listRows.push([p.securityName, p.a.codeName]); });
+listRows.forEach((r, n) => putRow(M, 'I' + (4 + n), r));
+const active = assets.filter((a) => a !== inactiveAsset).map((a) => a.codeName);
+// J holds the mapping for every listed security; K lists the active assets (the workbook's UNIQUE of J); the inactive asset is left out of K
+active.forEach((c, n) => putRow(M, 'K' + (4 + n), [c, '', n + 1]));
+put(M, 'Q2', 'Security Mapping'); putRow(M, 'P3', ['', 'Code Name', 'Holdings Name', 'Identification ID', 'Holding ID', 'Transaction Group']);
+let sm = 4; for (const a of assets) for (const s of a.ids) { putRow(M, 'P' + sm, [s, a.codeName, a.project, a.identificationId, s, a.transactionGroup]); sm++; }
+put(M, 'Y2', 'Funding Name'); putRow(M, 'Y3', ['Fund Name', 'Holdings Name', 'Holdings ID']);
+INVESTORS.forEach((inv, n) => putRow(M, 'Y' + (4 + n), [inv.fundName, inv.holdingsName, inv.id]));
+put(M, 'AC2', 'Investment Grade Mapping'); putRow(M, 'AC3', ['Rating', 'Score', 'Scale']);
+let ig = 4; SP.forEach((g, n) => { putRow(M, 'AC' + ig++, [g, SCORE[n], 'S&P / Fitch']); }); MO.forEach((g, n) => { putRow(M, 'AC' + ig++, [g, SCORE[n], "Moody's"]); }); putRow(M, 'AC' + ig, ['NR', 0, 'Not rated']);
+put(M, 'AH2', 'Fund Check'); putRow(M, 'AH3', ['Mapping', 'Holdings', 'Check']);
+INVESTORS.filter((x) => /Fund$/.test(x.fundName)).forEach((inv, n) => putRow(M, 'AH' + (4 + n), [inv.fundName, inv.holdingsName, 'OK']));
 
-// ---------- write ----------
-// Holdings keep the source-system headers (renamed by mapping_columns.csv); extra columns such as Custodian and Book
-// are deliberately unmapped so the engine reports them as ignored.
-const HOLD_HEADERS = Object.keys(holdingsRows[0]);
-const files = {
-  'holdings.csv': csv(holdingsRows, HOLD_HEADERS),
-  'mapping_columns.csv': csv(COLUMNS, ['source_header', 'canonical_field', 'required', 'note']),
-  'mapping_assets.csv': csv(mappingAssets, ['holding_id', 'asset_code', 'asset_name', 'code_name', 'security_id', 'tranche']),
-  'mapping_investors.csv': csv(INVESTORS, ['investor_id', 'investor_key', 'investor_label', 'investor_group', 'group_weight']),
-  'platforms.csv': csv(PLATFORMS, ['platform_id', 'platform_label', 'investor_label', 'weight']),
-  'ratings.csv': csv(RATINGS, ['grade', 'numeric', 'scale']),
-  'fx.csv': csv(FX, ['currency', 'rate_per_eur', 'investor_id', 'platform_id', 'note']),
-  'hardcoded.csv': csv(hardcoded, Object.keys(hardcoded[0])),
-  'esg.csv': csv(esg, Object.keys(esg[0])),
-  'config.csv': csv(CONFIG, ['key', 'value', 'note']),
-  'fund_lookthrough.csv': csv(LOOKTHROUGH, ['fund_label', 'holder_label', 'share', 'note']),
-};
-for (const [name, text] of Object.entries(files)) fs.writeFileSync(path.join(OUT, name), text);
+// ---------- build the Hardcoded sheet (keyed by Security ID = Identification ID) ----------
+const HC_ROW3 = ['Security ID', 'Project Name', 'Code Name', 'Chronological Order', 'Subsector', 'Cashflow Type', 'Description', 'Shareholders', 'Origination', 'Staff Closing',
+  'Upfront', 'Prepayment Protection (1)', 'Prepayment Protection (2)', 'End of NC / MW', 'IC Date', 'Funding Date', 'Total Debt Offering', 'Watchlist',
+  'Jurisdiction Tier - Investor 1', 'MN Classification', 'MN Sector Classification', 'MN FX for GBP / EUR', 'TICS Code', 'Investor 2 Sector Classification', 'Investor 3 Country Tier',
+  'Compliance with Financial Covenants'];
+const HC_ROW2 = ['', 'Project Code', '', 'Chronological Order', 'Subsector', 'Cashflow Type', 'Description', 'Shareholders', 'Origination', 'Staff Closing',
+  'Upfront', 'Prepayment Protection (1)', 'Prepayment Protection (2)', 'End of NC / MW', 'IC Date', 'Funding Date', 'Total Debt Offering', 'Watchlist',
+  'Jurisdiction Tier - Investor 1', 'MN Classification', '', 'MN FX for GBP', 'TICS Code', 'Investor 2 Sector Classification', 'Investor 3 Country Tier',
+  'Compliance with Financial Covenants'];
+const HC = grid(3); putRow(HC, 'C2', HC_ROW2); putRow(HC, 'C3', HC_ROW3);
+assets.slice().sort((x, y) => x.funding - y.funding).forEach((a, n) => {
+  putRow(HC, 'C' + (4 + n), [a.identificationId, a.project, a.codeName, n + 1, a.subsector, a.cashflow,
+    `${a.greenfield} ${a.subsector.toLowerCase()} ${a.instrument.toLowerCase()} financing in ${a.country}. SYNTHETIC.`, a.sponsor, a.origination, a.staff,
+    a.upfrontBps, a.protectionEnd ? 'Make-whole' : 'None', a.protectionEnd ? 'Non-call period' : '', a.protectionEnd, a.icDate, iso(a.funding), a.size, a.watch,
+    pick(['Tier 1', 'Tier 2']), pick(['Core', 'Core+']), a.sector, a.ccy === 'GBP' ? 'Hedged' : 'n/a', 'TICS-' + (300 + a.i), a.sector, pick(['Tier 1', 'Tier 2', 'Tier 3']),
+    weighted([['Yes', 9], ['Waiver', 1]])]);
+});
 
-// data/demo.js: the same CSV texts as window.SCOPE_DEMO, so the app and tests/index.html work from file:// where fetch is unavailable.
-const embedded = '/* AUTO-GENERATED by tools/gen-demo.js — SYNTHETIC demo dataset embedded for file:// use. Do not edit by hand. */\n' +
-  'window.SCOPE_DEMO = ' + JSON.stringify(files, null, 0) + ';\n';
+// ---------- build the ESG Hardcoded sheet ----------
+const ESG_ROW3 = ['Security ID', 'Project Name', 'Code Name', 'Infra Code', 'FM Monitoring', 'E Score', 'S Score', 'G Score', 'ESG Score', 'Shareholders', 'CHI Sector', 'CHI Subsector',
+  'CHI Subsubsector', 'CHI Asset Type', 'CHI Asset Specific', 'GHG Scope 1', 'GHG Scope 2', 'GHG Scope 3'];
+const ESG_ROW2 = ['', 'Project Name', 'Code Name', 'Infra Code', 'Staff Monitoring', 'E Score', 'S Score', 'G Score', 'ESG Score', 'Shareholders', 'CHI Sector', 'CHI Subsector',
+  'CHI Subsubsector', 'CHI Asset Type', 'CHI Asset Specific', 'GHG Scope 1', 'GHG Scope 2', 'GHG Scope 3'];
+const ES = grid(3); putRow(ES, 'C2', ESG_ROW2); putRow(ES, 'C3', ESG_ROW3);
+assets.forEach((a, n) => {
+  if (n === 13) return; // one asset without an ESG row
+  const esgScore = Math.round((a.esg.e + a.esg.s + a.esg.g) / 3);
+  putRow(ES, 'C' + (4 + n - (n > 13 ? 1 : 0)), [a.identificationId, a.project, a.codeName, 'INF' + String(a.i + 1).padStart(3, '0'), a.staff, a.esg.e, a.esg.s, a.esg.g, esgScore, a.sponsor,
+    a.sector, a.subsector, a.subsector + ' assets', a.greenfield === 'Greenfield' ? 'Construction' : 'Operational', a.instrument, Math.round(a.esg.ghg * 0.6), Math.round(a.esg.ghg * 0.4), Math.round(a.esg.ghg * between(1.5, 6))]);
+});
+
+// ---------- write the files ----------
+const SHEETS = { Holdings: H, Mapping: M, Hardcoded: HC, 'ESG Hardcoded': ES };
+for (const old of fs.readdirSync(OUT)) fs.unlinkSync(path.join(OUT, old)); // the demo folder holds only the four sheets (and the workbook)
+for (const [name, g] of Object.entries(SHEETS)) fs.writeFileSync(path.join(OUT, name + '.csv'), toCsv(g));
+const embedded = '/* AUTO-GENERATED by tools/gen-demo.js. SYNTHETIC demo workbook (the four AUM input sheets as cell grids) embedded so the app works when\n'
+  + '   index.html is opened as a file. rows[r][c] = Excel row r+1, column c+1. Do not edit by hand: run node tools/gen-demo.js. */\n'
+  + 'window.SCOPE_DEMO = ' + JSON.stringify({ label: 'SYNTHETIC DEMO', sheets: Object.fromEntries(Object.entries(SHEETS).map(([k, g]) => [k, { name: k, rows: g.map((r) => Array.from(r, (v) => (v === undefined ? null : v))) }])) }) + ';\n';
 fs.writeFileSync(path.join(ROOT, 'data', 'demo.js'), embedded);
-
-console.log('assets', assets.length, '| holdings rows', holdingsRows.length, '| files', Object.keys(files).join(', '));
+// the same four sheets as one workbook, when the workbook writer is available
+try {
+  require(path.join(ROOT, 'js', 'core', 'util.js')); require(path.join(ROOT, 'js', 'core', 'csv.js')); require(path.join(ROOT, 'js', 'inputs', 'workbook.js'));
+  const inputs = globalThis.Scope && globalThis.Scope.inputs;
+  if (inputs && inputs.writeXlsx) {
+    const bytes = inputs.writeXlsx(Object.fromEntries(Object.entries(SHEETS).map(([k, g]) => [k, { name: k, rows: g }])));
+    fs.writeFileSync(path.join(OUT, 'Scope-demo.xlsx'), Buffer.from(bytes));
+  }
+} catch (e) { console.log('workbook not written:', e.message); }
+console.log(`assets ${assets.length} | holdings rows ${positions.length} (+15 padding) | sheets ${Object.keys(SHEETS).join(', ')} | files: ${fs.readdirSync(OUT).join(', ')}`);

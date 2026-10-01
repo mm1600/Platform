@@ -1,5 +1,5 @@
 /* Module: Layer 2 · Concentration & risk — how concentrated the selected platform is by name, sponsor, sector, country,
- * rating, currency and maturity, read against ILLUSTRATIVE thresholds from config.csv (never mandate limits).
+ * rating, currency and maturity, read against ILLUSTRATIVE thresholds (js/calc/aum.js §1) (never mandate limits).
  *
  * Scope.concentration holds the pure helpers. Nothing here touches the DOM at load time, so tests/concentration.tests.js
  * runs them in Node:
@@ -125,13 +125,13 @@
     return { years, unknown, within, total };
   };
 
-  /** Base currency of the book (config.csv base_currency), used for the non-base-currency share. */
+  /** Base currency of the book (js/calc/aum.js §1 baseCurrency), used for the non-base-currency share. */
   CX.baseCurrency = function (res) {
     const c = (res && res.config) || {};
     return c.base_currency || (c.raw && c.raw.base_currency) || 'EUR';
   };
 
-  /** The illustrative thresholds read from config.csv (percent values). `field` is the dataset field the worst contributor filters on. */
+  /** The illustrative thresholds set in js/calc/aum.js §1 (percent values). `field` is the dataset field the worst contributor filters on. */
   CX.THRESHOLDS = [
     { id: 'single_name', key: 'limit_single_name_pct', label: 'Largest single asset', field: 'asset_code' },
     { id: 'sponsor', key: 'limit_sponsor_pct', label: 'Largest sponsor', field: 'sponsor' },
@@ -150,7 +150,7 @@
   }
 
   /**
-   * Measure the book against each illustrative threshold in config.csv (limit_*_pct, in percent).
+   * Measure the book against each illustrative threshold set in js/calc/aum.js §1 (limit_*_pct, in percent).
    * Largest sponsor / sector / country ignore blank labels (an unknown sponsor is not one counterparty). Sub-IG is
    * rated sub-investment-grade exposure over all exposure (NR excluded, as in the engine metrics). Non-base currency is
    * exposure whose position currency differs from config base_currency; a multi-currency asset counts as non-base.
@@ -302,7 +302,7 @@
 
     // ---------- KPI row ----------
     const above = (id) => !!thById[id] && thById[id].status === 'above';
-    const thTitle = (id) => { const t = thById[id]; return t && isNum(t.limit) ? `Illustrative threshold from config.csv: ${F.pct(t.limit, 0)} (not a mandate limit)` : undefined; };
+    const thTitle = (id) => { const t = thById[id]; return t && isNum(t.limit) ? `Illustrative threshold (js/calc/aum.js §1): ${F.pct(t.limit, 0)} (not a mandate limit)` : undefined; };
     const within = (n) => M.maturing[n] || {};
     const matKpi = (n) => UI.kpi({ icon: 'clock', label: `Maturing within ${n} months`, value: cfmt(within(n).value), sub: `${F.pct(within(n).share)} of exposure · ${F.int(within(n).count)} asset${within(n).count === 1 ? '' : 's'}`, title: `Maturity date on or before ${F.date(within(n).until)} (reporting date + ${n} months), past-due included` });
     el.appendChild(h('div', { class: 'kpis cx-kpis' },
@@ -326,13 +326,13 @@
       if (!isNum(t.utilisation)) return h('span', { class: 'muted' }, '–');
       return h('span', { class: 'cx-util-cell' }, h('span', { class: 'cx-util' + (t.status === 'above' ? ' cx-util-over' : ''), title: `${F.pct(t.utilisation, 0)} of the illustrative threshold` }, h('span', { style: { width: Math.min(100, t.utilisation * 100).toFixed(1) + '%' } })), h('span', { class: 'cx-util-pct' }, F.pct(t.utilisation, 0)));
     };
-    const statusBadge = (t) => (t.status === 'above' ? UI.badge('Above', 'warn', 'Above the illustrative threshold from config.csv') : t.status === 'within' ? UI.badge('Within', 'ok', 'Within the illustrative threshold from config.csv') : UI.badge('Not set', 'muted', 'No illustrative threshold in config.csv'));
+    const statusBadge = (t) => (t.status === 'above' ? UI.badge('Above', 'warn', 'Above the illustrative threshold in js/calc/aum.js §1') : t.status === 'within' ? UI.badge('Within', 'ok', 'Within the illustrative threshold in js/calc/aum.js §1') : UI.badge('Not set', 'muted', 'No illustrative threshold in js/calc/aum.js §1'));
     const thRows = TH.map((t) => Object.assign({}, t, { label: t.id === 'non_base_ccy' ? `${t.label} (base ${base})` : t.label, worstLabel: t.worst ? t.worst.label : '' }));
-    el.appendChild(UI.section({ title: 'Illustrative thresholds', subtitle: 'Illustrative thresholds from config.csv, not mandate limits · click a row to filter on its worst contributor',
+    el.appendChild(UI.section({ title: 'Illustrative thresholds', subtitle: 'Illustrative thresholds (js/calc/aum.js §1), not mandate limits · click a row to filter on its worst contributor',
       body: UI.table({ rows: thRows, filter: false, compact: true, onRow: (t) => { if (t.worst && t.worst.filter) addFilters([t.worst.filter]); }, columns: [
-        { key: 'label', label: 'Measure', class: 'strong', title: 'Each threshold is an illustrative value from config.csv' },
+        { key: 'label', label: 'Measure', class: 'strong', title: 'Each threshold is an illustrative value in js/calc/aum.js §1' },
         { key: 'measured', label: 'Measured', align: 'right', format: (v) => F.pct(v) },
-        { key: 'limit', label: 'Illustrative threshold', align: 'right', format: (v) => (isNum(v) ? F.pct(v, 0) : 'not set'), title: 'Illustrative threshold from config.csv, not a mandate limit' },
+        { key: 'limit', label: 'Illustrative threshold', align: 'right', format: (v) => (isNum(v) ? F.pct(v, 0) : 'not set'), title: 'Illustrative threshold in js/calc/aum.js §1, not a mandate limit' },
         { key: 'headroom', label: 'Headroom', align: 'right', format: (v) => (isNum(v) ? (v >= 0 ? '+' : '-') + F.n1(Math.abs(v) * 100) + ' pp' : '–'), title: 'Threshold minus measured, in percentage points' },
         { key: 'utilisation', label: 'Utilisation', render: utilBar },
         { key: 'status', label: 'Status', render: statusBadge },
@@ -444,7 +444,7 @@
     const spBody = h('div'), cyBody = h('div');
     const spTh = thById.sponsor;
     el.appendChild(h('div', { class: 'charts' },
-      UI.section({ title: 'Sponsor concentration', subtitle: `top 10 sponsors · ${ccy} m` + (spTh && isNum(spTh.limit) ? ` · illustrative threshold from config.csv ${F.pct(spTh.limit, 0)}` : '') + ' · click to filter', body: spBody }),
+      UI.section({ title: 'Sponsor concentration', subtitle: `top 10 sponsors · ${ccy} m` + (spTh && isNum(spTh.limit) ? ` · illustrative threshold in js/calc/aum.js §1 ${F.pct(spTh.limit, 0)}` : '') + ' · click to filter', body: spBody }),
       UI.section({ title: 'Currency mix', subtitle: `position currency · base ${base} · click to filter`, body: cyBody })));
     draws.push({ body: spBody, fn: () => Ch.hbar(spBody, { items: M.sponsors.slice(0, 10).map((s) => ({ label: s.label, value: s.value, sub: `${F.pct(s.share)} of exposure · ${s.count} asset${s.count === 1 ? '' : 's'}` })), format: mfmt, onClick: (it) => addFilter('sponsor', it.label) }) });
     draws.push({ body: cyBody, fn: () => Ch.donut(cyBody, { items: M.currencies.map((c) => ({ label: c.label, value: c.value })), format: mfmt, centre: { value: F.pct(M.nonBaseShare, 0), label: 'non-' + base }, onClick: (it) => addFilter('currency', it.other ? it.other.map((o) => o.label) : it.label) }) });

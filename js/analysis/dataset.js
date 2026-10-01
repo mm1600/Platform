@@ -59,7 +59,7 @@
     }
     return v < 0 ? 'Negative' : 'Other';
   };
-  // Band edges come from config.csv (keys below) when present, else these defaults.
+  // Band edges come from the calculation settings (keys below) when present, else these defaults.
   const edgesFrom = (cfg, key, dflt) => str(cfg && cfg.raw && cfg.raw[key] ? cfg.raw[key] : dflt).split(',').map((s) => s.trim()).filter(Boolean);
   const DEFAULT_EDGES = {
     remaining_years_bands: '0-1,1-3,3-5,5-7,7-10,10-15,15+',
@@ -229,6 +229,62 @@
     return { records, fields, fieldById };
   }
 
+
+  // ---------- raw sheet columns ----------
+  // Every column of the input sheets is also a field, so anything in the workbook can be filtered, pivoted or shown:
+  // all Holdings columns per position, every Hardcoded and ESG Hardcoded column per asset (on both grains).
+  const RAW_GROUP = { Holdings: 'Holdings columns', Hardcoded: 'Hardcoded columns', 'ESG Hardcoded': 'ESG columns' };
+  const isBlankish = (v) => v === null || v === undefined || (typeof v === 'string' && (v.trim() === '' || /^#/.test(v.trim())));
+  /** Value of a raw column for a position (Holdings) or its asset (Hardcoded / ESG Hardcoded). */
+  const rawValue = (sheet, header, p, a) => (sheet === 'Holdings' ? (p && p.sheet ? p.sheet[header] : null)
+    : (a && a.sheets && a.sheets[sheet] && a.sheets[sheet][header] ? a.sheets[sheet][header].value : null));
+  /** Cleaned raw value: Excel errors → blank, date columns → ISO date (Excel serials converted), numeric text → number. */
+  function rawClean(v, def) {
+    if (isBlankish(v)) return def.kind === 'measure' ? NaN : '';
+    if (def.type === 'date') {
+      if (typeof v === 'number' && v > 20000 && v < 80000) return U.isoDate(new Date(Date.UTC(1899, 11, 30) + Math.floor(v) * 86400000));
+      const d = U.parseDate(v); return d ? U.isoDate(d) : String(v);
+    }
+    if (def.kind === 'measure') return typeof v === 'number' ? v : U.toNumber(v);
+    return String(v).trim();
+  }
+  /**
+   * Add one field per raw sheet column to `fields` (ids 'raw:<sheet>:<header>'). A column is a measure when at least
+   * 80% of its values are numbers: amounts are summed (Holdings amounts in source units, not converted; Hardcoded / ESG
+   * amounts once per asset), other numbers are exposure-weighted averages. Columns whose header says "date" are dates.
+   * @returns {Array<{id, sheet, header, field}>} definitions used to fill the records
+   */
+  function addRawFields(fields, res, grain) {
+    const sheets = (res.inputs && res.inputs.sheets) || {};
+    const want = grain === 'positions' ? ['Holdings', 'Hardcoded', 'ESG Hardcoded'] : ['Hardcoded', 'ESG Hardcoded'];
+    const used = new Set(fields.map((f) => f.id)), labels = new Set(fields.map((f) => f.label));
+    const posSample = (res.positions || []).slice(0, 500), assetSample = (res.assets || []).slice(0, 300);
+    const defs = [];
+    for (const sheet of want) {
+      for (const c of (sheets[sheet] && sheets[sheet].columns) || []) {
+        const id = 'raw:' + sheet + ':' + c.header; if (used.has(id)) continue; used.add(id);
+        const vals = (sheet === 'Holdings' ? posSample.map((p) => rawValue(sheet, c.header, p, null)) : assetSample.map((a) => rawValue(sheet, c.header, null, a))).filter((v) => !isBlankish(v));
+        const isDate = /date/i.test(c.header);
+        const numeric = !isDate && vals.length > 0 && vals.filter((v) => typeof v === 'number' || (typeof v === 'string' && /^-?[\d,]*\.?\d+%?$/.test(v.trim()))).length / vals.length >= 0.8;
+        const label = labels.has(c.header) ? `${c.header} (${sheet})` : c.header; labels.add(label);
+        const base = { id, label, group: RAW_GROUP[sheet], title: `${sheet}!${c.letter}: ${c.header}${c.output ? ' (' + c.output + ')' : ''}` };
+        let f;
+        if (numeric) {
+          const amount = /amount|notional|commitment|balance|book value|revenue|ebitda|offering|nominal|ghg|scope/i.test(c.header);
+          const perAsset = sheet !== 'Holdings' && amount;
+          f = Object.assign(base, { kind: 'measure', type: 'number', get: (r) => r[id], agg: amount ? 'sum' : 'wavg', weight: (r) => r.exposure, perAsset,
+            format: (v) => (U.isNum(v) ? (Math.abs(v) >= 1000 ? U.fmt.int(v) : U.fmt.n2(v)) : '–'), unit: 1, unitLabel: amount && sheet === 'Holdings' ? 'source units, not converted' : '' });
+        } else {
+          f = Object.assign(base, { kind: 'dimension', type: isDate ? 'date' : 'string', get: (r) => r[id], agg: 'count', distinctKey: (r) => r[id],
+            format: (v) => (v === '' || v === null || v === undefined ? BLANK : isDate ? U.fmt.date(U.parseDate(v)) : String(v)) });
+          if (isDate) f.sortRank = dateRank;
+        }
+        fields.push(f); defs.push({ id, sheet, header: c.header, field: f });
+      }
+    }
+    return defs;
+  }
+
   // ---------- position grain ----------
   /**
    * One record per engine position (holding × investor), including excluded positions (excluded: 'Yes',
@@ -242,6 +298,7 @@
     if (memoPositions.has(res)) return memoPositions.get(res);
     const ctx = context(res);
     const fields = makeFields(ctx, 'positions');
+    const rawDefs = addRawFields(fields, res, 'positions');
     const records = [];
     for (const p of res.positions || []) {
       if (p.filteredOut) continue; // outside the global filter (Scope.filters)
@@ -249,7 +306,7 @@
       const attrs = (a && a.attrs) || {}, esg = (a && a.esg) || {}, rt = p.rating || {};
       const rated = rt.status === 'rated';
       const w = ctx.weightOf(p.investor_label);          // platform weight (Output!G8 selection)
-      const gw = num0(pick(p, 'group_weight', 0));       // attribution weight from mapping_investors.csv
+      const gw = num0(pick(p, 'group_weight', 0));       // attribution weight (js/calc/aum.js CONFIG.investors)
       const nominal = num0(p.nominal_base), drawn = num0(p.drawn_base), commitment = num0(p.commitment_base);
       const rec = {
         _pos: p, _asset: a,
@@ -285,6 +342,7 @@
       rec.wal_band = DS.band(rec.wal_years, ctx.edges.wal_band, ' y');
       rec.spread_band = DS.band(rec.margin_bps, ctx.edges.spread_band);
       rec.size_band = DS.band(nominal / ctx.unit, ctx.edges.size_band);
+      for (const d of rawDefs) rec[d.id] = rawClean(rawValue(d.sheet, d.header, p, a), d.field);
       records.push(rec);
     }
     const out = finish(records, fields);
@@ -310,6 +368,7 @@
       fields.push({ id: 'investor_nominal:' + label, label: label + ' nominal', kind: 'measure', type: 'number', group: 'Investor', get: (r) => r['investor_nominal:' + label], format: (v) => U.fmt.m(U.isNum(v) ? v / unit : NaN), agg: 'sum', unit, unitLabel: ctx.unitLabel, investor: label, measureOf: 'nominal' });
       fields.push({ id: 'investor_drawn:' + label, label: label + ' drawn', kind: 'measure', type: 'number', group: 'Investor', get: (r) => r['investor_drawn:' + label], format: (v) => U.fmt.m(U.isNum(v) ? v / unit : NaN), agg: 'sum', unit, unitLabel: ctx.unitLabel, investor: label, measureOf: 'drawn' });
     }
+    const rawDefs = addRawFields(fields, res, 'assets');
     const records = [];
     for (const r of res.rows || []) {
       const a = r.asset || ctx.assetsByCode.get(r.code) || {};
@@ -354,6 +413,7 @@
       rec.wal_band = DS.band(rec.wal_years, ctx.edges.wal_band, ' y');
       rec.spread_band = DS.band(rec.margin_bps, ctx.edges.spread_band);
       rec.size_band = DS.band(exposure / unit, ctx.edges.size_band);
+      for (const d of rawDefs) rec[d.id] = rawClean(rawValue(d.sheet, d.header, null, r.asset), d.field);
       records.push(rec);
     }
     // the asset grain has no investor dimension; countDistinct on investors is a per-row count summed

@@ -1,18 +1,21 @@
 /* Scope fund look-through tests — run in the browser (tests/index.html) or Node (node tests/run-node.js). Loads after engine.tests.js. */
 (function (global) {
   'use strict';
-  const Scope = global.Scope, AUM = Scope.engine.aum, LT = Scope.engine.lookthrough;
+  const Scope = global.Scope, AUM = Scope.calc.aum, LT = Scope.engine.lookthrough;
   const T = (Scope.tests = Scope.tests || { cases: [], files: null });
   T.add = T.add || ((name, fn) => T.cases.push({ name, fn }));
   const add = T.add;
   const assert = (c, msg) => { if (!c) throw new Error(msg || 'assertion failed'); };
   const close = (a, b, eps, msg) => { if (!(Math.abs(a - b) <= (eps === undefined ? 1e-6 : eps))) throw new Error(`${msg || ''} expected ${b}, got ${a}`); };
-  T.tablesFrom = T.tablesFrom || function (files) { const tables = {}, tableInfo = {}; for (const [n, t] of Object.entries(files)) { const p = Scope.csv.parse(t); tables[n] = p.records.filter(Boolean); tableInfo[n] = { parsed: p }; } return { tables, tableInfo }; };
   const MEASURES = ['nominal', 'drawn', 'commitment'];
   const HEAD = 'fund_label,holder_label,share,note\n';
   let cached = null;
-  /** Demo engine result (TOTAL, EUR) plus the demo look-through rows. */
-  const demo = () => { if (!cached) { const t = T.tablesFrom(T.files); cached = { res: AUM.compute(Object.assign({ adjustments: [], platform: 'TOTAL', currency: 'EUR' }, t)), rows: t.tables['fund_lookthrough.csv'] || [] }; } return cached; };
+  // The four input sheets carry no fund unit register, so the look-through table is defined here (synthetic):
+  // Group-entity holders of each fund hold exactly the fund's group weight (0.35 and 0.20).
+  const REGISTER = HEAD + ['Investor 7,Investor 1,0.15,Group entity units', 'Investor 7,Investor 3,0.1,Group entity units', 'Investor 7,Investor 5,0.1,Group entity units', 'Investor 7,Investor 9,0.25,Third-party units',
+    'Investor 8,Investor 2,0.12,Group entity units', 'Investor 8,Investor 6,0.08,Group entity units', 'Investor 8,Investor 10,0.3,Third-party units'].join('\n') + '\n';
+  /** Demo result (Total platform, EUR) plus the register rows. */
+  const demo = () => { if (!cached) cached = { res: T.demo(), rows: rowsOf(REGISTER) }; return cached; };
   /** Parse a look-through CSV text into records, as the store would. */
   const rowsOf = (text) => Scope.csv.parse(text).records.filter(Boolean);
   const nom = (a, label) => ((a.byInvestor.get(label) || { nominal: 0 }).nominal);
@@ -146,20 +149,19 @@
     close(t.distributions.sector.reduce((s, x) => s + x.exposure_m, 0), t.metrics.total_exposure_m, 1e-6, 'sector breakdown reconciles');
     assert(LT.summariseInvestor(res, lt, 'Investor 4', 'lookthrough').rows.length === 0, 'no units, no look-through rows');
     // GROUP platform: Σ weight × direct column over investors = platform total
-    const g = AUM.compute(Object.assign({ adjustments: [], platform: 'GROUP', currency: 'EUR' }, T.tablesFrom(T.files)));
+    const g = T.demo({ platform: 'Group (attributed)' });
     const shares = g.investorColumns.map((l) => LT.platformShare(g, l, 'nominal'));
     close(shares.reduce((s, x) => s + x.contribution, 0), shares[0].platformTotal, 1e-3, 'contributions add up');
     close(LT.platformShare(g, 'Investor 7').weight, 0.35, 1e-12, 'fund weight in GROUP');
-    assert(LT.platformsOf(g, 'Investor 7').some((p) => p.id === 'BETA' && p.weight === 1), 'platform membership');
+    assert(LT.platformsOf(g, 'Investor 7').some((p) => p.id === 'Platform Beta' && p.weight === 1), 'platform membership');
   });
 
   add('lookthrough: global filter subset (positions kept by holdings line) still reconciles', () => {
     const { rows } = demo();
-    const t = T.tablesFrom(T.files);
-    const full = AUM.compute(Object.assign({ adjustments: [], platform: 'TOTAL', currency: 'EUR' }, t));
+    const full = T.demo();
     const keepCodes = new Set(full.rows.slice(0, 15).map((r) => r.code));
     const lines = new Set(full.positions.filter((p) => !p.excluded && keepCodes.has(p.asset_code)).map((p) => p.line));
-    const res = AUM.compute(Object.assign({ adjustments: [], platform: 'TOTAL', currency: 'EUR', includeLines: lines }, t));
+    const res = T.demo({ includeLines: lines });
     const lt = LT.compute(res, rows);
     assert(lt.reconciles, 'filtered reconciles');
     for (const [code] of lt.byInvestor.get('Investor 1').perAsset) assert(keepCodes.has(code), 'only filtered assets carry exposure');

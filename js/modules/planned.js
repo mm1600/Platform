@@ -64,7 +64,7 @@
           UI.section({ title: 'Open definitions', subtitle: 'must be confirmed by the business before results are authoritative (brief §21)', body: def.open.length ? h('ul', { class: 'checklist' }, def.open.map((t) => h('li', {}, t))) : UI.empty('None specific') }),
         ));
         el.appendChild(UI.section({ title: 'Already available today', body: def.available.length ? h('ul', { class: 'checklist' }, def.available.map(([t, mod]) => h('li', { class: 'done' }, h('a', { href: Scope.href(mod) }, t)))) : UI.empty('Nothing yet') }));
-        el.appendChild(UI.section({ title: 'How to build it', body: h('p', { class: 'small ink2' }, 'Add a CSV name to ', h('code', {}, 'Scope.store.REQUIRED'), ', read it in a new engine file under ', h('code', {}, 'js/engine/'), ', then copy ', h('code', {}, 'js/modules/layer2-esg.js'), ' as the page and change this module\'s status to "built". See README → Add a module.') }));
+        el.appendChild(UI.section({ title: 'How to build it', body: h('p', { class: 'small ink2' }, 'Put the calculation in its own file under ', h('code', {}, 'js/calc/'), ' (one auditable file per coverage task, like ', h('code', {}, 'js/calc/aum.js'), '), reading any extra workbook sheets there, then copy ', h('code', {}, 'js/modules/layer2-esg.js'), ' as the page and set this module\'s status to "built". See README › Extending the platform.') }));
       },
     });
   }

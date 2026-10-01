@@ -263,7 +263,7 @@
           res.issues.length ? [' ', h('a', { class: 'badge badge-muted', href: Scope.href('data', 'issues') }, `${res.issues.length} issues`)] : null),
         actions: [presetSel, viewSel, viewsBtn, linkBtn],
       }));
-      if (res.fatal) el.appendChild(h('div', { class: 'notice error' }, h('b', {}, 'Holdings cannot be processed. '), 'Required columns are missing after mapping — see ', h('a', { href: Scope.href('data', 'mapping') }, 'column mapping'), '.'));
+      if (res.fatal) el.appendChild(h('div', { class: 'notice error' }, h('b', {}, 'Holdings cannot be processed. '), 'Required columns are missing after mapping — see ', h('a', { href: Scope.href('data', 'columns') }, 'column mapping'), '.'));
 
       // ---------- tabs ----------
       const tabsEl = h('div', { class: 'tabs xp-tabs' });

@@ -75,24 +75,23 @@
       const attrPairs = (fields, holder) => fields.map((f) => [f.replace(/_/g, ' '), h('span', {}, provDd(a.src[f], holder[f]), adjBtn(f))]);
       const R = a.rating || {};
       el.appendChild(h('div', { class: 'grid-3' },
-        UI.section({ title: 'Deal attributes', subtitle: 'manual inputs (hardcoded.csv) · edit icon corrects a value with an audit trail', body: UI.dl(attrPairs(['sector', 'subsector', 'country', 'region', 'sponsor', 'greenfield_brownfield', 'repayment_type', 'cash_flow_type', 'origination', 'deal_year', 'deal_lead', 'watchlist', 'total_transaction_size', 'upfront_fee_bps', 'description'], a.attrs)) }),
+        UI.section({ title: 'Deal attributes', subtitle: 'from the Hardcoded, ESG Hardcoded and Holdings sheets (badge shows the cell) · edit icon corrects a value with an audit trail', body: UI.dl(attrPairs(AUM.ASSET_ATTRIBUTE_FIELDS, a.attrs)) }),
         UI.section({ title: 'Credit & terms', subtitle: 'from positions (imported) and derived fields', body: UI.dl([
-          ['currency', a.currency], ['rate type', provDd({ table: 'calc', note: 'coupon_type = "Fixed" → Fixed, else Floating' }, a.fixed_floating)],
-          ['spread', U.isNum(a.margin_bps) ? F.bps(a.margin_bps) : '–'], ['coupon', U.isNum(a.coupon) ? a.coupon + '%' : '–'],
+          ['currency', a.currency], ['rate type', provDd(a.positions[0] ? a.positions[0].src.rate_type : null, a.fixed_floating)],
+          ['spread', provDd(a.positions[0] ? a.positions[0].src.spread : null, U.isNum(a.margin_bps) ? F.bps(a.margin_bps) : '–')], ['closing rating', R.closing || '–'],
           ['funding date', F.date(a.funding_date)], ['maturity date', F.date(a.maturity_date)],
           ['initial tenor', provDd({ table: 'calc', note: 'YEARFRAC(funding, maturity), 30/360; 0 if a date is missing (workbook IFERROR)' }, F.yrs(a.initial_tenor))],
           ['WAL', provDd(a.src.wal_years, U.isNum(a.attrs.wal_years) ? F.yrs(a.attrs.wal_years) : '')],
           ['protection end', provDd(a.src.protection_end_date, a.attrs.protection_end_date)], ['protected life', provDd({ table: 'calc', note: '(protection_end − funding) ÷ (maturity − funding)' }, U.isNum(a.protected_life_fraction) ? F.pct(a.protected_life_fraction, 0) : '')],
-          ['covenant', [a.attrs.covenant_type, a.attrs.lockup_level ? `lock-up ${a.attrs.lockup_level}x` : '', a.attrs.default_level ? `default ${a.attrs.default_level}x` : ''].filter(Boolean).join(' · ')],
+          ['covenant compliance', provDd(a.src.covenant_compliance, a.attrs.covenant_compliance)],
           ['internal grade', `${R.internal || '–'} (${R.internal_numeric || 0})`], ['Fitch / Moody\'s / S&P', `${R.fitch} / ${R.moodys} / ${R.sp}`],
           ['external (worst)', `${R.external_grade || '–'} (${R.external_numeric || 0})`], ['current grade', provDd(a.src.rating, `${R.current_grade || '–'} → ${R.status === 'rated' ? R.ig_label : 'NR'} (numeric ${R.current_numeric || 0}, threshold ${res.config.ig_threshold})`)],
         ]) }),
-        UI.section({ title: 'ESG', subtitle: 'esg.csv (Greenscope / RDR stand-in) · methodology open per brief §8.8', body: a.esg && Object.keys(a.esg).length ? UI.dl(attrPairs(AUM.ESG_FIELDS, a.esg)) : UI.empty('No ESG record') }),
+        UI.section({ title: 'ESG', subtitle: 'ESG Hardcoded sheet · methodology to be agreed', body: a.esg && Object.keys(a.esg).length ? UI.dl(attrPairs(AUM.ESG_FIELDS, a.esg)) : UI.empty('No ESG record') }),
       ));
 
       // ---------- positions ----------
       const posRows = a.positions.map((p) => ({ p, investor: p.investor_label, holding: p.holding_id, tranche: p.tranche, ccy: p.currency, nominal: p.nominal, drawn: p.drawn, commitment: p.commitment, fx: p.fx_rate, nominal_m: p.nominal_base / unit, drawn_m: p.drawn_base / unit, grade: p.rating.current_grade, line: p.line, adjusted: p.flags.includes('adjusted') }));
-      // Excluded positions belonging to this asset; unmapped holdings have no asset code, so they are matched by security-name prefix.
       // only positions mapped to this asset; unmapped holdings have no asset and are listed on the Data page instead
       const excl = res.excludedPositions.filter((p) => p.asset_code === a.code);
       el.appendChild(UI.section({ title: 'Positions', subtitle: 'one row per investor × holding (Holdings sheet) · edit icon adjusts an imported amount with an audit trail', body: [UI.table({
@@ -111,7 +110,7 @@
       const platRows = res.platforms.map((p) => ({ label: p.label, id: p.id, nominal_m: a.platform[p.id].nominal / unit, drawn_m: a.platform[p.id].drawn / unit, composition: p.composition.map((c) => `${c.label === '*' ? 'all investors' : c.label} × ${c.weight}`).join(' + ') }));
       // Calculation trace: the engine's pipeline for this asset (mapping → FX → totals → investor columns → platform → attribution → rating).
       const trace = h('ol', { class: 'trace' },
-        step(1, `${a.positionCount} position(s) map to ${a.code} through mapping_assets.csv (holding IDs ${a.holdings.join(', ')}).` + (a.excludedCount ? ` ${a.excludedCount} excluded — see above.` : '')),
+        step(1, `${a.positionCount} position(s) map to identification ID ${a.code} through Mapping › Security Mapping (holding IDs ${a.holdings.join(', ')}).` + (a.excludedCount ? ` ${a.excludedCount} excluded — see above.` : '')),
         step(2, `Each position converted: amount ÷ FX(ccy per EUR) × FX(${ccy} per EUR). ` + a.positions.map((p) => `${p.investor_label}: ${p.currency} ${F.amount(p.nominal)} ÷ ${F.n4(p.fx_rate)} → ${F.m(p.nominal_base / unit)}m`).join('; ')),
         step(3, `Asset totals = Σ positions: nominal ${m(a.nominal)}, drawn ${m(a.drawn)}, commitment ${m(a.commitment)}.`),
         step(4, `Investor columns (SUMIF by investor label × asset): ` + invItems.map((i) => `${i.label} ${F.m(i.value)}m`).join('; ') + '.'),
@@ -123,10 +122,15 @@
       function step(n, text) { return h('li', {}, h('span', { class: 'step' }, n), h('span', {}, text)); }
       el.appendChild(h('div', { class: 'grid-2' },
         UI.section({ title: 'Investor split', subtitle: `nominal per investor column, ${ccy}m`, body: invChart }),
-        UI.section({ title: 'Platform columns', subtitle: 'how this asset rolls into each configured platform (platforms.csv)', body: UI.table({ rows: platRows, filter: false, compact: true, columns: [
+        UI.section({ title: 'Platform columns', subtitle: 'how this asset rolls into each view (Mapping column H; compositions in js/calc/aum.js §1)', body: UI.table({ rows: platRows, filter: false, compact: true, columns: [
           { key: 'label', label: 'Platform', class: 'strong' }, { key: 'nominal_m', label: `Nominal ${ccy}m`, align: 'right', format: F.m }, { key: 'drawn_m', label: `Drawn ${ccy}m`, align: 'right', format: F.m }, { key: 'composition', label: 'Composition', class: 'dim wrap' }] }) }),
       ));
-      el.appendChild(UI.section({ title: 'Calculation trace', subtitle: 'every displayed figure is reproducible from the CSV inputs (brief §15 auditability)', body: trace }));
+      // ---------- source rows: the asset's complete Hardcoded and ESG Hardcoded rows, cell by cell ----------
+      const srcRows = [];
+      for (const sheet of ['Hardcoded', 'ESG Hardcoded']) for (const [header, c] of Object.entries((a.sheets && a.sheets[sheet]) || {})) srcRows.push({ sheet, header, label: c.label || '', value: c.value === null || c.value === undefined ? '' : String(c.value), cell: c.cell });
+      el.appendChild(UI.section({ title: 'Source rows', subtitle: 'every column of this asset in the Hardcoded and ESG Hardcoded sheets, with its cell', body: srcRows.length ? UI.table({ rows: srcRows, compact: true, filterPlaceholder: 'Filter columns…', exportName: `scope_${a.code}_source_rows.csv`, columns: [
+        { key: 'sheet', label: 'Sheet' }, { key: 'cell', label: 'Cell', class: 'mono' }, { key: 'header', label: 'Column (row 3)', class: 'strong' }, { key: 'label', label: 'Row 2 label', class: 'dim' }, { key: 'value', label: 'Value', class: 'wrap' }] }) : UI.empty('No Hardcoded or ESG Hardcoded row for this asset') }));
+      el.appendChild(UI.section({ title: 'Calculation trace', subtitle: 'every figure is reproducible from the four input sheets (js/calc/aum.js)', body: trace }));
       // Draw the chart once its section is in the DOM and has a width.
       requestAnimationFrame(() => C.hbar(invChart, { items: invItems, format: (v) => F.m(v) + 'm' }));
     },

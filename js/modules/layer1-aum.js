@@ -182,7 +182,7 @@
           h('button', { class: 'btn', title: 'One row per position (unfiltered)', onClick: () => UI.downloadText(fileName(res, 'positions'), Scope.csv.serialize(AUM.positionRecords(res))) }, Scope.icon('download', { size: 14 }), 'Positions CSV'),
         ],
       }));
-      if (res.fatal) el.appendChild(h('div', { class: 'notice error' }, h('b', {}, 'Holdings cannot be processed. '), 'Required columns are missing after mapping — see ', h('a', { href: Scope.href('data', 'mapping') }, 'column mapping'), '.'));
+      if (res.fatal) el.appendChild(h('div', { class: 'notice error' }, h('b', {}, 'Holdings cannot be processed. '), 'Required columns are missing after mapping — see ', h('a', { href: Scope.href('data', 'columns') }, 'column mapping'), '.'));
 
       // ---------- filter bar ----------
       const barHost = h('div', { class: 'section', style: { padding: '.75rem 1.25rem' } });
@@ -228,7 +228,7 @@
           UI.kpi({ icon: 'briefcase', label: 'Exposure', value: `${ccy} ${F.m(M.total_exposure_m)}m`, sub: `${M.n_assets} assets · ${M.n_positions} positions` }),
           UI.kpi({ icon: 'download', label: 'Drawn', value: `${ccy} ${F.m(M.total_drawn_m)}m`, sub: `${F.pct(M.drawn_pct)} of exposure` }),
           UI.kpi({ icon: 'clock', label: 'Undrawn', value: `${ccy} ${F.m(M.total_undrawn_m)}m`, sub: 'commitment not yet funded' }),
-          UI.kpi({ icon: 'percent', label: `${L} share of book`, value: F.pct(M.group_share_of_book), sub: `all investors: ${F.m(M.book_total_m)}m`, title: `${L}-attributed nominal ÷ total nominal across all investor columns (group_weight from mapping_investors.csv)` }),
+          UI.kpi({ icon: 'percent', label: `${L} share of book`, value: F.pct(M.group_share_of_book), sub: `all investors: ${F.m(M.book_total_m)}m`, title: `${L}-attributed nominal ÷ total nominal across all investor columns (group weights from js/calc/aum.js CONFIG.investors or the Data page)` }),
           ratingKpi,
           UI.kpi({ icon: 'activity', label: 'Weighted spread', value: F.bps(M.w_margin_bps), sub: `coverage ${F.pct(M.margin_coverage, 0)}` }),
           UI.kpi({ icon: 'calendar', label: 'Weighted WAL', value: F.yrs(M.w_wal_years), sub: `remaining tenor ${F.yrs(M.w_remaining_years)}` }),

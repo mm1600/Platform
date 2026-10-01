@@ -74,6 +74,7 @@
 
   // ---------- popover (one at a time, closes on outside click or Escape) ----------
   let pop = null;
+  /** Close the open popover and remove its document listeners. */
   function closePop() {
     if (!pop) return;
     pop.el.remove();

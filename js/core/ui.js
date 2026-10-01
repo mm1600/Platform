@@ -59,7 +59,8 @@
     if (!src) return UI.badge('n/a', 'muted', 'No source recorded');
     if (src.table === 'manual') return UI.badge('Manual', 'manual', `Manual adjustment by ${src.adjustment ? src.adjustment.user : '?'} · original: ${src.original === undefined ? '' : src.original} · reason: ${src.adjustment ? src.adjustment.reason : ''}`);
     if (src.table === 'calc') return UI.badge('Calculated', 'calc', src.note || 'Calculated by the engine');
-    return UI.badge('Imported', 'imported', `${src.table}${src.row ? ' · line ' + src.row : ''}${src.col ? ' · column "' + src.col + '"' : ''}`);
+    // imported values cite the workbook cell, e.g. "Holdings!AK57 · RA_Commitment QC"
+    return UI.badge('Imported', 'imported', src.cell ? `${String(src.cell).includes('!') ? src.cell : src.table + '!' + src.cell}${src.col ? ' · ' + src.col : ''}` : `${src.table}${src.row ? ' · row ' + src.row : ''}${src.col ? ' · column "' + src.col + '"' : ''}`);
   };
 
   /** Card-style page section: header (title, optional subtitle and right-aligned actions) + body (element or trusted HTML string). */

@@ -1,17 +1,17 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Scope · engine tests</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Scope · tests</title>
 <link rel="stylesheet" href="../css/scope.css">
 <style>body{padding:24px;max-width:900px;margin:0 auto}.t{padding:8px 10px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center}.ok{color:var(--good-text)}.fail{color:var(--critical)}.err{grid-column:2/4;font-size:12.5px;color:var(--critical)}</style></head>
 <body>
-<!-- Browser test page: loads the core and engine scripts plus the embedded demo dataset (data/demo.js, so it
-     also works from file://), runs the cases registered by engine.tests.js and pivot.tests.js, and lists the
-     results with timings. node tests/run-node.js runs the same cases against data/demo/*.csv. -->
-<h1>Scope engine tests</h1><p class="muted" id="summary">Running…</p><div id="out"></div>
-<script src="../js/core/util.js"></script><script src="../js/core/csv.js"></script><script src="../js/engine/aum.js"></script><script src="../js/engine/dataset.js"></script><script src="../js/engine/pivot.js"></script><script src="../js/engine/lookthrough.js"></script><script src="../js/core/charts-extra.js"></script><script src="../js/modules/layer2-concentration.js"></script><script src="../data/demo.js"></script><script src="engine.tests.js"></script><script src="pivot.tests.js"></script><script src="lookthrough.tests.js"></script><script src="concentration.tests.js"></script>
+<!-- Browser test page: loads the workbook reader, the AUM calculation, the analysis layer and the embedded synthetic demo
+     workbook (data/demo.js, so it also works from file://), runs every registered case and lists the results.
+     Same cases as node tests/run-node.js. -->
+<h1>Scope tests</h1><p class="muted" id="summary">Running…</p><div id="out"></div>
+<script src="../js/core/util.js"></script><script src="../js/core/csv.js"></script><script src="../js/inputs/workbook.js"></script><script src="../js/calc/aum.js"></script><script src="../js/analysis/dataset.js"></script><script src="../js/analysis/pivot.js"></script><script src="../js/analysis/lookthrough.js"></script><script src="../js/core/charts-extra.js"></script><script src="../js/modules/layer2-concentration.js"></script><script src="../data/demo.js"></script><script src="aum.tests.js"></script><script src="pivot.tests.js"></script><script src="lookthrough.tests.js"></script><script src="concentration.tests.js"></script><script src="workbook.tests.js"></script>
 <script>
 // Run every registered case, render one row per result, and put the pass / fail mark in the tab title.
 (async () => {
-  Scope.tests.files = window.SCOPE_DEMO;
+  // the fixture is window.SCOPE_DEMO (data/demo.js), read directly by aum.tests.js
   const results = await Scope.tests.run();
   const out = document.getElementById('out');
   for (const r of results) { const d = document.createElement('div'); d.className = 't'; d.innerHTML = `<span class="${r.ok ? 'ok' : 'fail'}">${r.ok ? '✔' : '✘'}</span><span>${r.name}</span><span class="muted small">${r.ms} ms</span>${r.error ? `<div class="err">${Scope.util.escapeHtml(r.error)}</div>` : ''}`; out.appendChild(d); }

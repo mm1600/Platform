@@ -1,0 +1,117 @@
+/* Scope · Data & validation page (js/modules/layer0-data.js).
+   Builds on the tokens and components of css/scope.css (white .section cards, .tbl tables, .badge, .chip, .notice);
+   every class here is prefixed dp-. Loaded after scope.css. */
+
+/* ---------- tabs and sub-navigation ---------- */
+.dp-tabs .tab .badge { margin-left: .4rem; font-size: 70%; vertical-align: 1px; }
+.dp-subnav { margin-bottom: 1rem; }
+.dp-toolbar { display: flex; gap: .5rem 1.25rem; flex-wrap: wrap; align-items: center; margin-bottom: .75rem; }
+.dp-grid { margin-bottom: 24px; }
+
+/* ---------- notices with actions ---------- */
+.dp-bar { display: flex; align-items: center; justify-content: space-between; gap: .75rem 1.25rem; flex-wrap: wrap; }
+.dp-notice-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.dp-notice-head .btn { margin: -.2rem -.5rem 0 0; }
+.dp-notice-list { margin: .4rem 0 0; padding-left: 1.2rem; font-size: .8125rem; }
+.dp-notice-list li { margin-bottom: .2rem; }
+.dp-summary { margin: 0 0 1rem; font-size: .875rem; color: var(--heading-color); }
+
+/* ---------- drop zone ---------- */
+.dp-drop { border: 2px dashed var(--border-color); border-radius: var(--radius); background: var(--light); padding: 2.25rem 1.5rem; text-align: center; transition: border-color .15s, background-color .15s; }
+.dp-drop.over { border-color: var(--primary); background: var(--bnpp-mint); }
+.dp-drop.busy { cursor: progress; border-color: var(--bnpp-silver-tree); }
+.dp-drop.busy .dp-drop-actions { visibility: hidden; }
+.dp-drop-icon { color: var(--primary); margin-bottom: .4rem; }
+.dp-drop-icon .feather { width: 30px; height: 30px; stroke-width: 1.5; }
+.dp-drop-title { font-size: 1.05rem; font-weight: 500; color: var(--heading-color); word-break: break-word; }
+.dp-drop-sub { color: var(--muted); font-size: .8125rem; margin: .35rem auto 1rem; max-width: 660px; }
+.dp-drop-actions { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; }
+.dp-downloads { display: flex; gap: .5rem .75rem; flex-wrap: wrap; align-items: center; margin-top: 1rem; }
+.dp-page .btn[disabled] { opacity: .55; cursor: not-allowed; pointer-events: none; }
+
+/* ---------- sheet cards ---------- */
+.dp-sheets { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); gap: 24px; margin-bottom: 24px; }
+.dp-sheets > .section { margin-bottom: 0; }
+.dp-sheet > div:last-child { display: flex; flex-direction: column; flex: 1; }
+.dp-sheet .dl { font-size: .8125rem; gap: .35rem .8rem; margin-bottom: 1rem; }
+.dp-sheet.dp-missing { box-shadow: inset 3px 0 0 var(--danger), var(--card-shadow); }
+.dp-sheet-actions { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: auto; padding-top: .85rem; border-top: 1px solid var(--border-light); }
+
+/* ---------- how it works ---------- */
+.dp-how ol { margin: 0 0 1rem; padding-left: 1.2rem; font-size: .875rem; }
+.dp-how li { margin-bottom: .45rem; }
+.dp-need-title { font-weight: 600; color: var(--heading-color); font-size: .8125rem; margin-bottom: .5rem; }
+.dp-need { font-size: .8125rem; }
+.dp-need dt { color: var(--heading-color); font-weight: 500; }
+.dp-need dd { display: block; color: var(--body-color); }
+
+/* ---------- columns ---------- */
+.dp-letter { display: inline-block; min-width: 1.9em; padding: 0 .3em; font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: .75rem; line-height: 1.55; text-align: center; color: var(--bnpp-dianne); background: var(--light); border: 1px solid var(--border-color); border-radius: 2px; }
+.dp-col { display: inline-block; max-width: 320px; white-space: normal; }
+.dp-key { font-size: .75rem; color: var(--muted); }
+.dp-wrap { white-space: normal; max-width: 320px; }
+.dp-pick { display: flex; align-items: center; gap: .35rem; }
+.dp-select { font-size: .8125rem; padding: .15rem 2rem .15rem .5rem; max-width: 250px; background-position: right .5rem center; }
+.dp-num { width: 90px; font-size: .8125rem; padding: .15rem .5rem; text-align: right; }
+.dp-row-actions { display: flex; gap: .35rem; justify-content: flex-end; align-items: center; }
+.dp-row-actions.dp-left { justify-content: flex-start; }
+
+/* ---------- mapping tables and preview ---------- */
+.dp-maptable td { vertical-align: top; }
+.dp-maptable .dp-toggle { padding: .15rem .35rem; }
+.dp-toggle .feather { transition: transform .15s; }
+.dp-toggle.dp-open .feather { transform: rotate(180deg); }
+.dp-cols-list { display: flex; flex-wrap: wrap; gap: .3rem .85rem; white-space: normal; min-width: 260px; max-width: 520px; }
+.dp-cols-list > span { white-space: nowrap; }
+.tbl tbody tr.dp-preview-row:hover td, .tbl tbody tr.dp-preview-row > td { background: var(--light); }
+.dp-preview-row > td { white-space: normal; padding: .75rem; }
+.dp-preview-cap { margin-bottom: .4rem; }
+.dp-preview { overflow: auto; max-height: 460px; background: #fff; border: 1px solid var(--border-color); }
+.dp-preview .tbl th, .dp-preview .tbl td { padding: .25rem .5rem; font-size: .75rem; max-width: 220px; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid var(--border-light); }
+.dp-preview .tbl th { cursor: default; text-align: center; background: var(--light); color: var(--muted); font-weight: 500; border-bottom-width: 1px; }
+.dp-preview .tbl th:hover { color: var(--muted); }
+.dp-preview .dp-rownum { color: var(--muted); background: var(--light); text-align: right; position: sticky; left: 0; z-index: 1; min-width: 2.5em; }
+.dp-preview .tbl tr.dp-hdr td { font-weight: 600; color: var(--heading-color); background: var(--bnpp-mint); }
+.dp-preview .tbl tr.dp-hdr td.dp-rownum { background: var(--light); color: var(--muted); }
+
+/* ---------- views, investors, FX ---------- */
+.dp-field-row { display: flex; gap: .5rem .75rem; align-items: center; flex-wrap: wrap; margin-bottom: .75rem; }
+.dp-field-row label { margin: 0; font-size: .875rem; }
+.dp-sub { margin-top: 1.25rem; }
+.dp-sub h3 { font-size: .875rem; color: var(--heading-color); margin-bottom: .5rem; }
+.dp-modes { display: flex; flex-direction: column; gap: .5rem; margin-bottom: 1rem; }
+.dp-modes label { display: flex; gap: .55rem; align-items: baseline; cursor: pointer; font-size: .875rem; }
+.dp-custom { border-top: 1px solid var(--border-light); padding-top: .75rem; }
+.dp-custom .tbl th { cursor: default; }
+.dp-disabled { opacity: .45; pointer-events: none; }
+
+/* ---------- modals: paste and export ---------- */
+textarea.dp-paste, textarea.dp-code { font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: .75rem; line-height: 1.45; white-space: pre; overflow: auto; }
+textarea.dp-paste { min-height: 240px; }
+textarea.dp-code { min-height: 380px; background: var(--light); }
+.dp-origin { width: 90px; text-transform: uppercase; }
+.dp-paste-foot { margin-top: .4rem; }
+.dp-spacer { flex: 1; }
+
+/* ---------- settings ---------- */
+.dp-settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(480px, 100%), 1fr)); gap: 24px; margin-bottom: 24px; }
+.dp-settings > .section { margin-bottom: 0; }
+
+/* ---------- checks ---------- */
+.dp-checks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(440px, 100%), 1fr)); gap: 24px; margin-bottom: 24px; }
+.dp-checks > .section { margin-bottom: 0; }
+.dp-formula { font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: .75rem; color: var(--muted); margin-bottom: .75rem; word-break: break-word; }
+.dp-check-figs { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; margin-bottom: .45rem; }
+.dp-check-pct { font-size: 1.5rem; font-weight: 500; color: var(--heading-color); font-variant-numeric: tabular-nums; }
+.dp-meter { height: 6px; background: var(--border-light); margin-bottom: 1rem; overflow: hidden; }
+.dp-meter > span { display: block; height: 100%; background: var(--success); }
+.dp-meter-warn > span { background: var(--warning); }
+.dp-meter-error > span { background: var(--danger); }
+
+/* ---------- responsive ---------- */
+@media (max-width: 991px) {
+  .dp-sheets, .dp-checks, .dp-settings { gap: 16px; margin-bottom: 16px; }
+  .dp-grid { margin-bottom: 16px; }
+  .dp-drop { padding: 1.5rem 1rem; }
+  .dp-select { max-width: 220px; }
+}

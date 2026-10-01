@@ -138,7 +138,7 @@
       const fund = { fund_label: f, holders, listedShare, externalShare: 1 - listedShare, groupShareFromHolders, thirdPartyShare: listedShare - groupShareFromHolders, groupWeight, consistent,
         isInvestorColumn: columnSet.has(f), group: groupOf(f), passThrough: zero(), externalAmount: zero() };
       if (listedShare > 1 + SHARE_EPS) issue('error', `${f}: listed unit holders hold ${pct(listedShare)} (more than 100%); the external residual is negative and look-through amounts exceed the fund`);
-      if (!columnSet.has(f)) issue('warn', `${f} is not an investor column in mapping_investors.csv; it has no direct exposure and only passes through what it holds in other funds`);
+      if (!columnSet.has(f)) issue('warn', `${f} is not an investor column in Mapping › Funding Name; it has no direct exposure and only passes through what it holds in other funds`);
       else if (inv && inv.group && inv.group !== 'Fund') issue('info', `${f} is listed as a fund in ${LT.TABLE} but its investor_group is "${inv.group}"`);
       if (U.isNum(groupWeight) && !consistent) issue('warn', `${f}: ${L}-entity holders hold ${pct(groupShareFromHolders)} of units but group_weight is ${pct(groupWeight)}; ${L} attribution keeps using group_weight from mapping_investors.csv`);
       for (const x of holders) if (!columnSet.has(x.holder_label) && !isFund.has(x.holder_label)) issue('info', `${x.holder_label} (holder of ${f}) is not an investor column; it carries look-through exposure only`);

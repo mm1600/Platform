@@ -7,18 +7,16 @@
  */
 (function (global) {
   'use strict';
-  const Scope = global.Scope, U = Scope.util, AUM = Scope.engine.aum, DS = Scope.engine.dataset, P = Scope.pivot;
+  const Scope = global.Scope, U = Scope.util, AUM = Scope.calc.aum, DS = Scope.engine.dataset, P = Scope.pivot;
   const T = (Scope.tests = Scope.tests || { cases: [], files: null });
   T.add = T.add || ((name, fn) => T.cases.push({ name, fn }));
   const add = T.add;
   // Same minimal assert / close helpers as engine.tests.js (kept local so this file can run alone).
   const assert = (c, msg) => { if (!c) throw new Error(msg || 'assertion failed'); };
-  const close = (a, b, eps, msg) => { if (!(Math.abs(a - b) <= (eps === undefined ? 1e-6 : eps))) throw new Error(`${msg || ''} expected ${b}, got ${a}`); };
-  T.tablesFrom = T.tablesFrom || function (files) { const tables = {}, tableInfo = {}; for (const [n, t] of Object.entries(files)) { const p = Scope.csv.parse(t); tables[n] = p.records.filter(Boolean); tableInfo[n] = { parsed: p }; } return { tables, tableInfo }; };
-  // Engine results are memoised per platform | currency so the many cases share a handful of compute() runs.
-  const cache = {};
-  /** Demo engine result for a platform (default TOTAL) and display currency (default EUR). */
-  const demo = (platform, currency) => { const k = (platform || 'TOTAL') + '|' + (currency || 'EUR'); return cache[k] || (cache[k] = AUM.compute(Object.assign({ adjustments: [], platform: platform || 'TOTAL', currency: currency || 'EUR' }, T.tablesFrom(T.files)))); };
+  // relative tolerance for large amounts (full currency units): summation order changes the last digits
+  const close = (a, b, eps, msg) => { if (!(Math.abs(a - b) <= (eps === undefined ? 1e-6 : eps) * Math.max(1, Math.abs(b) / 1e6))) throw new Error(`${msg || ''} expected ${b}, got ${a}`); };
+  /** Demo result for a view (default Total platform) and display currency (default EUR), shared with aum.tests.js. */
+  const demo = (platform, currency) => T.demo({ platform: platform || 'Total platform', currency: currency || 'EUR' });
   // The Explorer's default filter (Excluded = No): only included positions count towards AUM.
   const included = [{ field: 'excluded', op: 'eq', value: 'No' }];
   const sum = (arr, f) => arr.reduce((s, x) => s + f(x), 0);
@@ -46,9 +44,9 @@
   });
 
   add('dataset.build: platform weights drive exposure; TOTAL = nominal, look-through platform scales, non-members read No', () => {
-    const t = DS.build(demo('TOTAL'));
+    const t = DS.build(demo('Total platform'));
     for (const r of t.records) { close(r.exposure, r.nominal, 1e-9, 'TOTAL exposure = nominal'); assert(r.platform_member === 'Yes', 'everyone is a TOTAL member'); }
-    const lt = demo('FUND1LT'), d = DS.build(lt);
+    const lt = demo('Fund I look-through (35%)'), d = DS.build(lt);
     const comp = lt.platform.composition;
     for (const r of d.records) {
       const w = comp.filter((c) => c.label === '*' || c.label === r.investor_label).reduce((s, c) => s + c.weight, 0);
@@ -71,7 +69,7 @@
 
   // ---------- pivot reconciliation with the AUM engine ----------
   add('pivot.run: exposure by asset_code reconciles with metrics.total_exposure_m for TOTAL, ALPHA, BETA, FUND1LT', () => {
-    for (const pid of ['TOTAL', 'ALPHA', 'BETA', 'FUND1LT']) {
+    for (const pid of ['Total platform', 'Platform Alpha', 'Platform Beta', 'Fund I look-through (35%)']) {
       const res = demo(pid), ds = DS.build(res);
       const r = P.run({ records: ds.records, fieldById: ds.fieldById, rowDims: ['asset_code'], colDims: [], values: [{ field: 'exposure' }], filters: included });
       close(r.grandTotal[0] / res.config.unit, res.metrics.total_exposure_m, 1e-6, pid + ' grand total');

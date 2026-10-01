@@ -93,7 +93,7 @@
       // ---------- unknown investor ----------
       if (!inv) {
         el.appendChild(Scope.app.pageHead({ title: 'Investor not found', crumbs: back }));
-        el.appendChild(h('div', { class: 'notice error' }, `No investor "${label}" in mapping_investors.csv or ${LT.TABLE}.`));
+        el.appendChild(h('div', { class: 'notice error' }, `No investor "${label}" in Mapping › Funding Name.`));
         el.appendChild(UI.section({ title: 'Investors', body: h('div', { class: 'iv-links' }, Array.from(lt.byInvestor.keys()).map((l) => investorLink(l))) }));
         return;
       }
@@ -156,7 +156,7 @@
       if (mode !== 'direct') inv.viaFunds.forEach((v) => sourceItems.push({ label: `Via ${v.fund}`, value: v.amount.nominal / unit }));
       const sourceChart = h('div');
       el.appendChild(h('div', { class: 'grid-2 iv-row' },
-        UI.section({ title: 'Profile', subtitle: `mapping_investors.csv · platforms.csv${lt.available ? ' · ' + LT.TABLE : ''}`, body: UI.dl([
+        UI.section({ title: 'Profile', subtitle: `Mapping › Funding Name · views (Mapping column H)${lt.available ? ' · fund unit register' : ''}`, body: UI.dl([
           ['Investor ID', meta.id || inv.id || '–'], ['Key', meta.key || inv.key || '–'], ['Group', inv.group || '–'],
           [`${L} weight`, String(U.isNum(inv.group_weight) ? inv.group_weight : 0)],
           ['Platforms', platformsIn.length ? h('span', { class: 'iv-platforms' }, platformsIn.map((p) => h('span', {}, p.label, h('span', { class: 'muted' }, p.all ? ' (all investors)' : ` × ${p.weight}`)))) : h('span', { class: 'muted' }, 'none')],

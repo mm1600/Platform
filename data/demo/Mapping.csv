@@ -1,0 +1,59 @@
+
+,,References,,,,,Active Assets,,,,,,,,,Security Mapping,,,,,,,,Funding Name,,,,Investment Grade Mapping,,,,,Fund Check
+,,Columns in Holdings tab,Output Names,,,,Views (Portfolios / Investors),List,Mapping,Active Assets Output,Selected Assets,Number,,,,Code Name,Holdings Name,Identification ID,Holding ID,Transaction Group,,,,Fund Name,Holdings Name,Holdings ID,,Rating,Score,Scale,,,Mapping,Holdings,Check
+,,Reporting Date,Reporting Date,,,,Total platform,Aurora Offshore,AURO01,AURO01,,1,,,100200,AURO01,Aurora Offshore,100200,100200,TG-001,,,,Investor 1 Portfolio,Investor 1,94301,,AAA,100,S&P / Fitch,,,Investor 7 Fund,Investor 7,OK
+,,Model Portfolio,Model Portfolio,,,,Group (attributed),Beacon Airports,BEAC02,BEAC02,,2,,,100201,BEAC02,Beacon Airports,100201,100201,TG-001,,,,Investor 2 Portfolio,Investor 2,94302,,AA+,200,S&P / Fitch,,,Investor 8 Fund,Investor 8,OK
+,,Portfolio,Portfolio,,,,Platform Alpha,Cascade Telecom,CASC03,CASC03,,3,,,100202,CASC03,Cascade Telecom,100202,100202,TG-002,,,,Investor 3 Portfolio,Investor 3,94303,,AA,250,S&P / Fitch
+,,Security ID,Security ID,,,,Platform Beta,Delta Water A,DELT04,DELT04,,4,,,100203,DELT04,Delta Water,100203,100203,TG-002,,,,Investor 4 Portfolio,Investor 4,94304,,AA-,300,S&P / Fitch
+,,Security Name,Security Name,,,,Fund I look-through (35%),Delta Water B,DELT04,EMBE05,,5,,,100204,DELT04,Delta Water,100203,100204,TG-002,,,,Investor 5 Portfolio,Investor 5,94305,,A+,350,S&P / Fitch
+,,Portfolio Currency,Portfolio Currency,,,,Investor 9,Ember Battery A,EMBE05,FALC06,,6,,,100205,EMBE05,Ember Battery,100205,100205,TG-003,,,,Investor 6 Portfolio,Investor 6,94306,,A,400,S&P / Fitch
+,,Security Type Name,Instrument,,,,Investor 10,Ember Battery B,EMBE05,GRAN07,,7,,,100206,EMBE05,Ember Battery,100205,100206,TG-003,,,,Investor 7 Fund,Investor 7,94310,,A-,450,S&P / Fitch
+,,RA_Bullet,Bullet,,,,Investors 11+12,Falcon Hospitals,FALC06,HARB08,,8,,,100207,FALC06,Falcon Hospitals,100207,100207,TG-003,,,,Investor 8 Fund,Investor 8,94311,,BBB+,500,S&P / Fitch
+,,RA Asset Country Name,Country,,,,,Granite Hydro,GRAN07,IRIS09,,9,,,100208,GRAN07,Granite Hydro,100208,100208,TG-004,,,,Investor 9 Mandate,Investor 9,94320,,BBB,550,S&P / Fitch
+,,WAL,WAL,,,,,Harbour Toll,HARB08,JUNI10,,10,,,100209,HARB08,Harbour Toll,100209,100209,TG-004,,,,Investor 10 Mandate,Investor 10,94321,,BBB-,600,S&P / Fitch
+,,Quotation Currency,Currency,,,,,Iris Fibre,IRIS09,KEST11,,11,,,100210,IRIS09,Iris Fibre,100210,100210,TG-005,,,,Investor 11 Mandate,Investor 11,94322,,BB+,700,S&P / Fitch
+,,FX Rate EC,FX Rate,,,,,Juniper Gas,JUNI10,LUME12,,12,,,100211,JUNI10,Juniper Gas,100211,100211,TG-005,,,,Investor 12 Mandate,Investor 12,94323,,BB,750,S&P / Fitch
+,,Initial Commitment Amount CCY,Commitment,,,,,Kestrel Battery,KEST11,MERI13,,13,,,100212,KEST11,Kestrel Battery,100212,100212,TG-006,,,,,,,,BB-,800,S&P / Fitch
+,,RA_Commitment QC,Nominal,,,,,Lumen Hospitals A,LUME12,NIMB14,,14,,,100213,LUME12,Lumen Hospitals,100213,100213,TG-006,,,,,,,,B+,850,S&P / Fitch
+,,Current Drawn Amount CCY,Drawn,,,,,Lumen Hospitals B,LUME12,ORIO15,,15,,,100214,LUME12,Lumen Hospitals,100213,100214,TG-006,,,,,,,,B,900,S&P / Fitch
+,,RA Commitment RC,Nominal RC,,,,,Meridian Solar,MERI13,PION16,,16,,,100215,MERI13,Meridian Solar,100215,100215,TG-007,,,,,,,,B-,950,S&P / Fitch
+,,Purchase Date,Purchase Date,,,,,Nimbus Airports,NIMB14,QUAR17,,17,,,100216,NIMB14,Nimbus Airports,100216,100216,TG-007,,,,,,,,CCC+,1000,S&P / Fitch
+,,Maturity Date,Maturity Date,,,,,Orion Fibre,ORIO15,RIDG18,,18,,,100217,ORIO15,Orion Fibre,100217,100217,TG-008,,,,,,,,CCC,1050,S&P / Fitch
+,,Parent Issuer Name,Parent Issuer,,,,,Pioneer Gas,PION16,SUMM19,,19,,,100218,PION16,Pioneer Gas,100218,100218,TG-008,,,,,,,,Aaa,100,Moody's
+,,Issuer Country,Issuer Country,,,,,Quartz Battery,QUAR17,TIDA20,,20,,,100219,QUAR17,Quartz Battery,100219,100219,TG-009,,,,,,,,Aa1,200,Moody's
+,,Rate Type,Rate Type,,,,,Ridge Student,RIDG18,UMBR21,,21,,,100220,RIDG18,Ridge Student,100220,100220,TG-009,,,,,,,,Aa2,250,Moody's
+,,Seniority,Seniority,,,,,Summit Hydro,SUMM19,VERT22,,22,,,100221,SUMM19,Summit Hydro,100221,100221,TG-010,,,,,,,,Aa3,300,Moody's
+,,Time to Maturity,Time to Maturity,,,,,Tidal Toll,TIDA20,WILL23,,23,,,100222,TIDA20,Tidal Toll,100222,100222,TG-010,,,,,,,,A1,350,Moody's
+,,All-in Spread at Acquisition,Spread at Acquisition,,,,,Umbra Data,UMBR21,ZENI24,,24,,,100223,UMBR21,Umbra Data,100223,100223,TG-011,,,,,,,,A2,400,Moody's
+,,Spread,Spread,,,,,Vertex Electricity,VERT22,ALDE25,,25,,,100224,VERT22,Vertex Electricity,100224,100224,TG-011,,,,,,,,A3,450,Moody's
+,,Internal Current Rating,Internal Rating,,,,,Willow EV,WILL23,BIRC26,,26,,,100225,WILL23,Willow EV,100225,100225,TG-012,,,,,,,,Baa1,500,Moody's
+,,Ext Sec Group_Rating_Closing,Closing Rating,,,,,Zenith Education A,ZENI24,COBA27,,27,,,100226,ZENI24,Zenith Education,100226,100226,TG-012,,,,,,,,Baa2,550,Moody's
+,,Rating Fitch,Fitch,,,,,Zenith Education B,ZENI24,DUNE28,,28,,,100227,ZENI24,Zenith Education,100226,100227,TG-012,,,,,,,,Baa3,600,Moody's
+,,Rating S&P,S&P,,,,,Alder Offshore A,ALDE25,ECHO29,,29,,,100228,ALDE25,Alder Offshore,100228,100228,TG-013,,,,,,,,Ba1,700,Moody's
+,,Rating Moody's,Moody's,,,,,Alder Offshore B,ALDE25,FJOR30,,30,,,100229,ALDE25,Alder Offshore,100228,100229,TG-013,,,,,,,,Ba2,750,Moody's
+,,ICR Current,ICR,,,,,Birch Ports,BIRC26,GLAC31,,31,,,100230,BIRC26,Birch Ports,100230,100230,TG-013,,,,,,,,Ba3,800,Moody's
+,,LTV Current,LTV,,,,,Cobalt Telecom,COBA27,HORI32,,32,,,100231,COBA27,Cobalt Telecom,100231,100231,TG-014,,,,,,,,B1,850,Moody's
+,,DSC Status,DSCR Status,,,,,Dune Gas,DUNE28,INDI33,,33,,,100232,DUNE28,Dune Gas,100232,100232,TG-014,,,,,,,,B2,900,Moody's
+,,,,,,,,Echo District,ECHO29,JADE34,,34,,,100233,ECHO29,Echo District,100233,100233,TG-015,,,,,,,,B3,950,Moody's
+,,,,,,,,Fjord Student,FJOR30,KITE35,,35,,,100234,FJOR30,Fjord Student,100234,100234,TG-015,,,,,,,,Caa1,1000,Moody's
+,,,,,,,,Glacier Hydro,GLAC31,LANT36,,36,,,100235,GLAC31,Glacier Hydro,100235,100235,TG-016,,,,,,,,Caa2,1050,Moody's
+,,,,,,,,Horizon Airports,HORI32,MIST37,,37,,,100236,HORI32,Horizon Airports,100236,100236,TG-016,,,,,,,,NR,0,Not rated
+,,,,,,,,Indigo Fibre,INDI33,NOVA38,,38,,,100237,INDI33,Indigo Fibre,100237,100237,TG-017
+,,,,,,,,Jade Gas,JADE34,OPAL39,,39,,,100238,JADE34,Jade Gas,100238,100238,TG-017
+,,,,,,,,Kite District A,KITE35,PRIS40,,40,,,100239,KITE35,Kite District,100239,100239,TG-018
+,,,,,,,,Kite District B,KITE35,QUIL41,,41,,,100240,KITE35,Kite District,100239,100240,TG-018
+,,,,,,,,Lantern Hospitals,LANT36,ROWA42,,42,,,100241,LANT36,Lantern Hospitals,100241,100241,TG-018
+,,,,,,,,Mistral Solar,MIST37,SABL43,,43,,,100242,MIST37,Mistral Solar,100242,100242,TG-019
+,,,,,,,,Nova Ports,NOVA38,TUND44,,44,,,100243,NOVA38,Nova Ports,100243,100243,TG-019
+,,,,,,,,Opal Telecom,OPAL39,ULTR45,,45,,,100244,OPAL39,Opal Telecom,100244,100244,TG-020
+,,,,,,,,Prism Gas A,PRIS40,VALE46,,46,,,100245,PRIS40,Prism Gas,100245,100245,TG-020
+,,,,,,,,Prism Gas B,PRIS40,WREN47,,47,,,100246,PRIS40,Prism Gas,100245,100246,TG-020
+,,,,,,,,Quill District,QUIL41,,,,,,100247,QUIL41,Quill District,100247,100247,TG-021
+,,,,,,,,Rowan Student A,ROWA42,,,,,,100248,ROWA42,Rowan Student,100248,100248,TG-021
+,,,,,,,,Rowan Student B,ROWA42,,,,,,100249,ROWA42,Rowan Student,100248,100249,TG-021
+,,,,,,,,Sable Solar,SABL43,,,,,,100250,SABL43,Sable Solar,100250,100250,TG-022
+,,,,,,,,Tundra Ports,TUND44,,,,,,100251,TUND44,Tundra Ports,100251,100251,TG-022
+,,,,,,,,Ultra Fibre,ULTR45,,,,,,100252,ULTR45,Ultra Fibre,100252,100252,TG-023
+,,,,,,,,Vale Water,VALE46,,,,,,100253,VALE46,Vale Water,100253,100253,TG-023
+,,,,,,,,Wren EV,WREN47,,,,,,100254,WREN47,Wren EV,100254,100254,TG-024
+,,,,,,,,,,,,,,,100255,YARR48,Yarrow Hospitals,100255,100255,TG-024
