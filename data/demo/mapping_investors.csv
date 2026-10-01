@@ -1,0 +1,13 @@
+investor_id,investor_key,investor_label,investor_group,group_weight
+94301,INV01,Investor 1,Group entity,1
+94302,INV02,Investor 2,Group entity,1
+94303,INV03,Investor 3,Group entity,1
+94304,INV04,Investor 4,Group entity,1
+94305,INV05,Investor 5,Group entity,1
+94306,INV06,Investor 6,Group entity,1
+94310,INV07,Investor 7,Fund,0.35
+94311,INV08,Investor 8,Fund,0.2
+94320,INV09,Investor 9,Third party,0
+94321,INV10,Investor 10,Third party,0
+94322,INV11,Investor 11,Third party,0
+94323,INV12,Investor 12,Third party,0

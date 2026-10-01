@@ -1,0 +1,61 @@
+<!doctype html>
+<!-- Scope: infrastructure-debt portfolio platform. Open this file in a browser, or run start.bat / start.command / start.sh.
+     Scripts are plain classic scripts loaded in dependency order: core → engines → demo data → pages → app shell. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scope · Infra debt platform</title>
+<meta name="description" content="Scope — infrastructure-debt portfolio management platform. AUM view (Layer 1) with the six-layer navigation.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%2300915a'/%3E%3Ctext x='16' y='22' font-family='Inter,Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/scope.css">
+<link rel="stylesheet" href="css/grid.css">
+<link rel="stylesheet" href="css/explorer.css">
+<link rel="stylesheet" href="css/concentration.css">
+<link rel="stylesheet" href="css/investor.css">
+<link rel="stylesheet" href="css/filters.css">
+</head>
+<body>
+<div class="app" id="app">
+  <nav class="sidebar" id="sidebar" aria-label="Navigation"><div class="sidebar-content" id="sidebar-content"></div></nav>
+  <div class="main">
+    <header class="navbar" id="topbar"></header>
+    <main class="content" id="content"></main>
+  </div>
+</div>
+<noscript>Scope needs JavaScript enabled.</noscript>
+
+<!-- core (classic scripts so the app works from file://) -->
+<script src="js/core/util.js"></script>
+<script src="js/core/csv.js"></script>
+<script src="js/core/store.js"></script>
+<script src="js/core/registry.js"></script>
+<script src="js/core/icons.js"></script>
+<script src="js/core/charts.js"></script>
+<script src="data/world-map.js"></script>
+<script src="js/core/charts-extra.js"></script>
+<script src="js/core/ui.js"></script>
+<script src="js/core/grid.js"></script>
+<!-- engines: aum (positions, assets, Output rows) → dataset (flat records + field registry) → pivot (cross-tab) -->
+<script src="js/engine/aum.js"></script>
+<script src="js/engine/dataset.js"></script>
+<script src="js/engine/pivot.js"></script>
+<script src="js/engine/lookthrough.js"></script>
+<script src="js/core/filters.js"></script>
+<!-- embedded synthetic demo dataset (used when CSVs cannot be fetched, e.g. file://) -->
+<script src="data/demo.js"></script>
+<!-- modules: one file per business function; register themselves with Scope.registerModule -->
+<script src="js/modules/layer1-aum.js"></script>
+<script src="js/modules/layer1-explorer.js"></script>
+<script src="js/modules/layer1-asset.js"></script>
+<script src="js/modules/layer1-investors.js"></script>
+<script src="js/modules/layer1-investor.js"></script>
+<script src="js/modules/layer0-data.js"></script>
+<script src="js/modules/layer2-esg.js"></script>
+<script src="js/modules/layer2-concentration.js"></script>
+<script src="js/modules/planned.js"></script>
+<!-- app shell -->
+<script src="js/app.js"></script>
+</body>
+</html>

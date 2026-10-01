@@ -1,0 +1,151 @@
+/* Scope — Explorer page (js/modules/layer1-explorer.js): pivot builder, field list, zones, cross-tab and popovers.
+   AdminKit/Bootstrap look shared with css/scope.css and css/grid.css: white cards, #495057 text, 0.2–0.25rem radii,
+   BNP green accents, no pills. All classes are prefixed .xp- .
+   Loaded last by index.html, after css/grid.css (the Explorer's Positions / Assets tabs are styled there). */
+
+/* ---------- tab bar and page body ---------- */
+.xp-tabs { margin-bottom: 1rem; }
+.xp-body { min-width: 0; }
+
+/* ---------- layout: field panel + main ---------- */
+.xp-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 16px; align-items: start; }
+.xp-layout.xp-panel-closed { grid-template-columns: minmax(0, 1fr); }
+.xp-layout.xp-panel-closed .xp-fields { display: none; }
+.xp-main { min-width: 0; }
+@media (max-width: 1100px) {
+  .xp-layout { grid-template-columns: minmax(0, 1fr); }
+  .xp-fields { position: static; max-height: 300px; }
+}
+
+/* ---------- field list ----------
+   Sticky beside the builder on wide screens; draggable rows with a type glyph and a "+" button shown on hover / focus. */
+.xp-fields { position: sticky; top: 1rem; display: flex; flex-direction: column; max-height: calc(100vh - 2rem); min-height: 240px; background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: .75rem .75rem .5rem; font-size: .8125rem; }
+.xp-fields-head { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+.xp-fields-head strong { color: var(--muted-2); font-size: .925rem; font-weight: 600; flex: 1; }
+.xp-fields-head .btn { padding: .1rem .3rem; }
+.xp-field-search { width: 100%; padding: .25rem .6rem; font-size: .8125rem; margin-bottom: .4rem; }
+.xp-field-list { overflow: auto; flex: 1; min-height: 0; margin: 0 -.25rem; padding: 0 .25rem; }
+.xp-field-group { font-size: .68rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-2); padding: .55rem .35rem .2rem; }
+.xp-field-group:first-child { padding-top: .1rem; }
+.xp-field { display: flex; align-items: center; gap: .4rem; padding: .2rem .35rem; border-radius: var(--radius-sm); cursor: grab; user-select: none; }
+.xp-field:hover, .xp-field:focus-visible { background: var(--light); outline: 0; }
+.xp-field:focus-visible { box-shadow: 0 0 0 .15rem rgba(var(--primary-rgb), .3); }
+.xp-field:active { cursor: grabbing; }
+.xp-field-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xp-field.in-use .xp-field-label { color: var(--primary); font-weight: 500; }
+.xp-field-add { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: #fff; color: var(--muted); cursor: pointer; visibility: hidden; }
+.xp-field:hover .xp-field-add, .xp-field:focus-within .xp-field-add { visibility: visible; }
+.xp-field-add:hover { color: var(--primary); border-color: var(--bnpp-silver-tree); }
+.xp-glyph { display: inline-flex; align-items: center; color: var(--muted-2); flex: none; }
+.xp-glyph .feather { width: 12px; height: 12px; }
+
+/* ---------- zones ----------
+   Four drop targets (Filters, Columns, Rows, Values) in a 2 × 2 grid; .over highlights the zone under a drag. */
+.xp-zones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: .75rem; margin-bottom: 1rem; }
+@media (max-width: 700px) { .xp-zones { grid-template-columns: minmax(0, 1fr); } }
+.xp-zone { border: 1px dashed var(--border-color); border-radius: var(--radius-sm); padding: .35rem .5rem .45rem; min-height: 54px; background: #fff; transition: border-color .15s, background-color .15s; }
+.xp-zone.over { border-color: var(--primary); background: var(--bnpp-mint); }
+.xp-zone-title { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-2); margin-bottom: .3rem; }
+.xp-zone-title .muted { font-weight: 400; text-transform: none; letter-spacing: 0; }
+.xp-zone-body { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; min-height: 26px; }
+.xp-zone-empty { font-size: .78rem; color: var(--muted-2); font-style: italic; }
+
+/* zone chips: draggable, with options (caret) and remove buttons; filter chips use .active */
+.chip.xp-chip { display: inline-flex; align-items: center; gap: .25rem; max-width: 100%; padding: .15rem .25rem .15rem .5rem; background: var(--light); border-color: var(--border-color); color: var(--heading-color); cursor: grab; }
+.chip.xp-chip:hover { background: #eceff3; }
+.chip.xp-chip.active { background: var(--bnpp-mint); border-color: var(--bnpp-silver-tree); color: var(--heading-color); }
+.chip.xp-chip:active { cursor: grabbing; }
+.xp-chip-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 280px; }
+.xp-chip-btn { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0; border: 0; background: transparent; color: var(--muted); border-radius: var(--radius-sm); cursor: pointer; flex: none; }
+.xp-chip-btn:hover { background: rgba(0,0,0,.07); color: var(--heading-color); }
+.xp-chip-x:hover { color: var(--danger); }
+
+/* ---------- options bar, summary sentence, notices ---------- */
+.xp-options { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem .6rem; margin-bottom: .75rem; font-size: .8125rem; }
+.xp-opt { display: inline-flex; align-items: center; gap: .3rem; font-size: .8125rem; color: var(--body-color); white-space: nowrap; }
+.xp-opt input[type="checkbox"] { margin: 0; accent-color: var(--primary); }
+.xp-opt .btn-sm { padding: .1rem .45rem; }
+.btn.xp-on { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn.xp-on:hover { background: var(--primary-hover); }
+.input-sm, select.input-sm, .xp-options .input { padding: .2rem .5rem; font-size: .8125rem; line-height: 1.4; }
+select.input-sm, .xp-options select.input { padding-right: 1.8rem; background-position: right .5rem center; }
+.xp-summary { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .75rem; font-size: .8125rem; }
+.xp-sentence { color: var(--body-color); font-variant-numeric: tabular-nums; }
+.xp-notices .notice { margin-bottom: .75rem; }
+.xp-drill-note { margin-bottom: .75rem; }
+
+/* ---------- cross-tab ----------
+   One scroll box with sticky column header rows (their top offsets are set inline per header level), a sticky label
+   column and a sticky grand-total footer. Layering: corner (5) > footer label (4) > header / footer cells (3) > body
+   labels (2). Subtotal / total rows and total columns get a light background; folded "Other" rows are italic. */
+.xp-result { min-width: 0; }
+.xp-pivot-wrap { position: relative; overflow: auto; max-height: 70vh; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: #fff; }
+.xp-pivot { border-collapse: separate; border-spacing: 0; min-width: 100%; font-size: .8125rem; color: var(--body-color); font-variant-numeric: tabular-nums; }
+.xp-pivot th, .xp-pivot td { padding: .3rem .55rem; white-space: nowrap; border-bottom: 1px solid var(--border-light); vertical-align: middle; line-height: 1.35; }
+.xp-pivot thead th { position: sticky; z-index: 3; background: #fff; color: var(--heading-color); font-weight: 600; text-align: right; border-bottom: 2px solid var(--border-color); }
+.xp-pivot thead th.xp-corner { position: sticky; left: 0; z-index: 5; text-align: left; min-width: 220px; border-right: 1px solid var(--border-color); }
+.xp-pivot thead th.xp-th-col { text-align: center; border-left: 1px solid var(--border-light); }
+.xp-pivot thead th.xp-th-sub, .xp-pivot thead th.xp-th-total { background: var(--light); }
+.xp-pivot thead th.xp-th-val { font-weight: 500; }
+.xp-th-unit { display: block; font-weight: 400; font-size: .68rem; color: var(--muted); line-height: 1; margin-top: 2px; }
+.xp-pivot tbody td.xp-label, .xp-pivot tfoot td.xp-label { position: sticky; left: 0; z-index: 2; background: #fff; min-width: 220px; max-width: 420px; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid var(--border-color); color: var(--heading-color); }
+.xp-num { text-align: right; }
+td.xp-cell { cursor: pointer; }
+td.xp-cell:hover { background: var(--bnpp-mint); }
+td.xp-cell:empty { cursor: default; }
+td.xp-cell:empty:hover { background: transparent; }
+.xp-has-kids { cursor: pointer; }
+td.xp-label:not(.xp-has-kids) { cursor: pointer; }
+.xp-row:hover td { background-color: #fafbfc; }
+.xp-row:hover td.xp-label { background-color: #fafbfc; }
+.xp-row-subtotal td { font-weight: 600; background: var(--light) !important; border-top: 1px solid var(--border-color); }
+.xp-row-total td { font-weight: 600; background: var(--light) !important; }
+.xp-pivot tfoot td { position: sticky; bottom: 0; z-index: 3; border-top: 2px solid var(--border-color); border-bottom: 0; }
+.xp-pivot tfoot td.xp-label { z-index: 4; }
+.xp-row-other td.xp-label { color: var(--muted); font-style: italic; }
+.xp-col-sub, .xp-row-total-cell { background: #f8f9fa; }
+.xp-row-total-cell { border-left: 1px solid var(--border-light); font-weight: 500; }
+.xp-toggle { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; padding: 0; margin-right: .35rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: #fff; color: var(--muted); cursor: pointer; vertical-align: -3px; }
+.xp-toggle:hover { color: var(--primary); border-color: var(--bnpp-silver-tree); }
+.xp-toggle .feather { width: 10px; height: 10px; }
+.xp-count { font-size: .7rem; margin-left: .25rem; font-weight: 400; }
+
+/* ---------- popovers and menus ----------
+   Positioned in viewport coordinates by openPop() in layer1-explorer.js; z-index above the grid popovers (300). */
+.xp-pop { position: fixed; z-index: 320; min-width: 220px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow: auto; background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); font-size: .8125rem; color: var(--body-color); padding: .25rem 0; }
+.xp-pop-picker { width: 340px; }
+.xp-pop-range { width: 300px; }
+.xp-pop-values { width: 280px; }
+.xp-menu { display: flex; flex-direction: column; }
+.xp-menu-item { display: flex; align-items: center; gap: .5rem; width: 100%; padding: .35rem .8rem; border: 0; background: transparent; font: inherit; color: var(--body-color); text-align: left; cursor: pointer; white-space: nowrap; }
+.xp-menu-item:hover:not(.disabled), .xp-menu-item:focus-visible { background: var(--light); color: var(--heading-color); outline: 0; }
+.xp-menu-item.disabled { color: var(--muted-2); cursor: default; }
+.xp-menu-item.active { font-weight: 500; color: var(--primary); }
+.xp-menu-item .feather { width: 13px; height: 13px; color: var(--muted); flex: none; }
+.xp-menu-icon { display: inline-block; width: 13px; height: 13px; flex: none; }
+.xp-menu-sep { border-top: 1px solid var(--border-light); margin: .25rem 0; }
+/* popover contents: header, labelled fields (value options, range editor), search, value picker list and footer */
+.xp-pop-head { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; padding: .45rem .8rem; border-bottom: 1px solid var(--border-light); }
+.xp-pop-head strong { color: var(--heading-color); font-weight: 600; }
+.xp-pop-field { padding: .3rem .8rem; }
+.xp-pop-field label { display: block; font-size: .72rem; font-weight: 600; color: var(--muted); margin-bottom: .15rem; }
+.xp-pop-select, select.xp-pop-select, input.xp-pop-select { width: 100%; padding: .2rem .5rem; font-size: .8125rem; line-height: 1.4; }
+select.xp-pop-select { padding-right: 1.8rem; background-position: right .5rem center; }
+.xp-pop-search { display: block; width: calc(100% - 1.6rem); margin: .5rem .8rem .25rem; padding: .25rem .6rem; font-size: .8125rem; }
+.xp-pick-actions { display: flex; align-items: center; gap: .3rem; flex-wrap: wrap; padding: .3rem .8rem; }
+.xp-pick-actions .btn-sm { padding: .1rem .45rem; font-size: .75rem; }
+.xp-pick-list { max-height: 300px; overflow: auto; padding: .15rem .3rem; border-top: 1px solid var(--border-light); }
+.xp-pick { display: flex; align-items: center; gap: .45rem; padding: .18rem .5rem; border-radius: var(--radius-sm); cursor: pointer; margin: 0; font-weight: 400; }
+.xp-pick:hover { background: var(--light); }
+.xp-pick input[type="checkbox"] { margin: 0; accent-color: var(--primary); flex: none; }
+.xp-pick.zero { color: var(--muted-2); }
+.xp-pick-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xp-pick-count { font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.xp-pick-foot { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .4rem .8rem; border-top: 1px solid var(--border-light); font-size: .75rem; color: var(--muted); }
+
+/* ---------- print ---------- */
+@media print {
+  .xp-fields, .xp-zones, .xp-options, .xp-tabs { display: none !important; }
+  .xp-layout { grid-template-columns: minmax(0, 1fr); }
+  .xp-pivot-wrap { max-height: none; overflow: visible; border: 0; }
+}

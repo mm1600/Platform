@@ -1,0 +1,49 @@
+asset_code,esg_score,cbi_taxonomy,ghg_scope1_t,ghg_scope2_t,ghg_scope3_t,ghg_intensity_t_per_eurm,green_loan,sfdr_article,data_coverage
+INF-001,69,Aligned,28515,19010,157320,238,Y,Article 8,Estimated
+INF-002,66,Aligned,16034,10689,86187,297,N,Article 9,Estimated
+INF-003,62,Partially aligned,49643,33095,436473,110,N,Article 6,Reported
+INF-004,91,Not aligned,53377,35584,479172,103,N,Article 6,Reported
+INF-005,55,Not aligned,26448,17632,169965,170,Y,Article 8,Reported
+INF-006,46,Not aligned,9438,6292,39871,37,N,Article 8,Reported
+INF-007,88,Aligned,19781,13187,53153,45,Y,Article 8,Reported
+INF-008,79,Aligned,51923,34616,199263,865,N,Article 8,Reported
+INF-009,91,Not aligned,2967,1978,20009,6,N,Article 9,Reported
+INF-010,80,Not aligned,42063,28042,158132,180,N,Article 8,Estimated
+INF-011,47,Not aligned,36886,24590,136106,69,Y,Article 8,Estimated
+INF-012,52,Not aligned,8148,5432,53942,22,N,Article 8,Reported
+INF-013,75,Aligned,2978,1985,7916,8,Y,Article 6,Reported
+INF-014,78,Aligned,8526,5684,80471,18,N,Article 6,Estimated
+INF-015,63,Partially aligned,43540,29026,418116,125,N,Article 8,Reported
+INF-016,73,Partially aligned,21926,14618,108023,305,N,Article 6,Estimated
+INF-017,79,Aligned,37605,25070,287918,110,N,Article 8,Reported
+INF-018,67,Partially aligned,13942,9295,56591,32,N,Article 8,Reported
+INF-019,48,Aligned,43051,28700,294816,342,Y,Article 6,Reported
+INF-020,68,Not aligned,38982,25988,146221,500,N,Article 9,Reported
+INF-021,51,Partially aligned,14614,9742,66277,59,N,Article 9,Reported
+INF-022,83,Partially aligned,19118,12746,164962,123,N,Article 9,Reported
+INF-023,61,Partially aligned,39647,26431,355738,472,Y,Article 9,Reported
+INF-024,90,Not aligned,38855,25904,153877,75,N,Article 8,Reported
+INF-025,65,Aligned,37152,24768,264220,138,Y,Article 9,Estimated
+INF-026,67,Not aligned,13033,8688,45262,60,N,Article 6,Estimated
+INF-027,86,Aligned,14117,9411,131817,107,N,Article 8,Estimated
+INF-028,70,Aligned,15524,10349,104245,32,N,Article 6,Reported
+INF-029,59,Aligned,34924,23283,175997,121,Y,Article 8,Estimated
+INF-030,58,Not aligned,53804,35869,141855,272,N,Article 8,Reported
+INF-031,74,Aligned,9541,6361,84877,35,Y,Article 9,Reported
+INF-032,69,Aligned,53117,35412,266588,150,N,Article 6,Reported
+INF-033,82,Partially aligned,46253,30836,459545,179,N,Article 9,Reported
+INF-034,67,Partially aligned,45255,30170,271182,101,N,Article 6,Reported
+INF-035,86,Partially aligned,29398,19599,179590,306,N,Article 9,Estimated
+INF-036,70,Aligned,14471,9648,51495,100,N,Article 8,Reported
+INF-037,50,Aligned,7825,5216,35464,16,Y,Article 6,Reported
+INF-038,55,Not aligned,12069,8046,54617,72,N,Article 8,Reported
+INF-039,86,Partially aligned,37101,24734,365555,90,N,Article 8,Estimated
+INF-040,82,Aligned,2666,1777,17292,13,N,Article 9,Reported
+INF-041,61,Not aligned,41990,27993,372463,83,Y,Article 8,Reported
+INF-042,61,Not aligned,22787,15192,130681,62,N,Article 9,Reported
+INF-043,79,Aligned,47401,31601,289040,343,Y,Article 6,Reported
+INF-044,90,Not aligned,21781,14520,83434,53,N,Article 9,Reported
+INF-045,59,Aligned,21245,14163,174317,104,N,Article 8,Reported
+INF-046,58,Not aligned,13461,8974,60890,75,N,Article 8,Estimated
+INF-047,74,Partially aligned,41901,27934,146660,96,N,Article 9,Estimated
+INF-048,76,Partially aligned,31553,21036,279704,202,N,Article 8,Estimated

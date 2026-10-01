@@ -1,0 +1,157 @@
+/* Scope — data grid (Scope.ui.grid). AdminKit/Bootstrap look shared with css/scope.css: white cards, #495057 text,
+   0.2–0.25rem radii, BNP green accents. All classes are prefixed .grid- . Row heights: 28px normal, 24px compact.
+   Loaded by index.html after css/scope.css; every token has a literal fallback so the grid also renders on test
+   pages that load only part of the stylesheet. The virtual-scrolling maths in js/core/grid.js assumes fixed row
+   heights, so body rows must not wrap (white-space: nowrap + ellipsis below). */
+
+/* ---------- grid root: local tokens (density switches --grid-row-h) ---------- */
+.grid { --grid-row-h: 28px; --grid-head-h: 34px; --grid-bg: #fff; --grid-head-bg: #fff; --grid-foot-bg: var(--light, #f5f7fb); --grid-line: var(--border-color, #dee2e6); --grid-line-light: var(--border-light, #e9ecef);
+  display: flex; flex-direction: column; min-width: 0; font-family: var(--font); font-size: .8125rem; color: var(--body-color, #495057); }
+.grid-compact { --grid-row-h: 24px; }
+
+/* ---------- toolbar / chips / status ---------- */
+.grid-toolbar { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; margin-bottom: .5rem; }
+.grid-spacer-flex { flex: 1; }
+.grid-search-wrap { position: relative; display: inline-flex; align-items: center; }
+.grid-search-wrap .grid-search-icon { position: absolute; left: .6rem; color: var(--muted, #6c757d); pointer-events: none; }
+.grid-search { min-width: 240px; padding-left: 1.9rem; font-size: .8125rem; padding-top: .25rem; padding-bottom: .25rem; }
+.grid-toolbar .btn-sm .feather { width: 13px; height: 13px; }
+.grid-chips { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; margin-bottom: .5rem; }
+.grid-chip { display: inline-flex; align-items: center; gap: .35rem; max-width: 360px; font-size: .78rem; padding: .15rem .3rem .15rem .55rem; border: 1px solid var(--grid-line); border-radius: var(--radius-sm, .2rem); background: var(--bnpp-mint, #e8fcf2); color: var(--heading-color, #1d1d1b); }
+.grid-chip-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grid-chip .badge { font-size: .65rem; }
+.grid-chip-x { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: 0; background: transparent; color: var(--muted, #6c757d); cursor: pointer; border-radius: var(--radius-sm, .2rem); padding: 0; }
+.grid-chip-x:hover { background: rgba(0,0,0,.06); color: var(--danger, #dc3545); }
+.grid-chip-clear { font-size: .78rem; }
+.grid-status { display: flex; align-items: center; gap: 1rem; margin-top: .45rem; font-size: .78rem; color: var(--muted, #6c757d); font-variant-numeric: tabular-nums; }
+.grid-count { color: var(--body-color, #495057); }
+
+/* ---------- scroll container (single scroller, sticky header/footer) ----------
+   One element scrolls both axes so header, filter row, footer and frozen columns can all use position: sticky.
+   contain: strict isolates layout / paint of the (possibly very tall) table from the rest of the page; it is why
+   the scroller needs an explicit height (set inline from the grid's height option). table-layout: fixed makes the
+   <colgroup> widths authoritative. */
+.grid-scroll { position: relative; overflow: auto; contain: strict; background: var(--grid-bg); border: 1px solid var(--grid-line); border-radius: var(--radius-sm, .2rem); outline: 0; }
+.grid-scroll:focus-visible { box-shadow: 0 0 0 .2rem rgba(var(--primary-rgb, 0,145,90), .25); }
+.grid-table { border-collapse: separate; border-spacing: 0; table-layout: fixed; min-width: 100%; font-size: .8125rem; color: var(--body-color, #495057); }
+.grid-table th, .grid-table td { box-sizing: border-box; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; border-bottom: 1px solid var(--grid-line-light); border-right: 1px solid transparent; padding: 0 .5rem; text-align: left; font-variant-numeric: tabular-nums; }
+.grid-table .grid-num { text-align: right; }
+.grid-table .grid-center { text-align: center; }
+
+/* header: sticky label row with sort indicator (CSS triangle + level number), funnel when filtered, resize handle */
+.grid-th { position: sticky; top: 0; z-index: 3; height: var(--grid-head-h); background: var(--grid-head-bg); color: var(--heading-color, #1d1d1b); font-weight: 600; font-size: .8125rem; border-bottom: 2px solid var(--grid-line) !important; cursor: pointer; user-select: none; }
+.grid-th:hover { color: var(--primary, #00915a); }
+.grid-th-inner { display: flex; align-items: center; gap: .3rem; min-width: 0; height: 100%; }
+.grid-num .grid-th-inner { flex-direction: row-reverse; }
+.grid-th-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.grid-th-unit { display: block; font-weight: 400; font-size: .68rem; color: var(--muted, #6c757d); line-height: 1; margin-top: 1px; }
+.grid-th.grid-num .grid-th-unit { text-align: right; }
+.grid-sort { flex: none; display: none; align-items: center; gap: 1px; font-size: .68rem; font-weight: 600; color: var(--primary, #00915a); line-height: 1; }
+.grid-sort::after { content: ''; display: inline-block; width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; }
+.grid-sorted .grid-sort { display: inline-flex; }
+.grid-asc .grid-sort::after { border-bottom: 5px solid currentColor; }
+.grid-desc .grid-sort::after { border-top: 5px solid currentColor; }
+.grid-funnel { flex: none; display: none; color: var(--primary, #00915a); line-height: 0; }
+.grid-funnel .feather { fill: currentColor; }
+.grid-filtered .grid-funnel { display: inline-block; }
+.grid-resizer { position: absolute; top: 0; right: -3px; width: 7px; height: 100%; cursor: col-resize; z-index: 4; }
+.grid-resizer:hover, .grid-resizing .grid-resizer { background: linear-gradient(to right, transparent 2px, var(--primary, #00915a) 2px, var(--primary, #00915a) 4px, transparent 4px); }
+.grid-th { position: sticky; }
+.grid-th, .grid-filter-cell, .grid-foot-cell { position: sticky; }
+
+/* filter row: sticks directly under the header; --grid-head-h is measured by grid.js and set on the root */
+.grid-filter-cell { top: var(--grid-head-h); z-index: 3; background: var(--grid-head-bg); padding: 3px 4px; height: 30px; border-bottom: 1px solid var(--grid-line) !important; }
+.grid-filter { display: flex; align-items: stretch; height: 24px; border: 1px solid var(--grid-line); border-radius: var(--radius-sm, .2rem); background: #fff; overflow: hidden; }
+.grid-filter:focus-within { border-color: var(--bnpp-silver-tree, #66b498); box-shadow: 0 0 0 .15rem rgba(var(--primary-rgb, 0,145,90), .2); }
+.grid-filter-input { flex: 1; min-width: 0; border: 0; padding: 0 .4rem; font-family: inherit; font-size: .76rem; color: var(--body-color, #495057); background: transparent; outline: 0; }
+.grid-filter-input::placeholder { color: #b0b6bb; }
+.grid-filter-input.invalid { color: var(--danger, #dc3545); }
+.grid-filter-btn { flex: none; width: 20px; border: 0; border-left: 1px solid var(--grid-line-light); background: #fff; color: var(--muted, #6c757d); cursor: pointer; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.grid-filter-btn:hover { background: var(--light, #f5f7fb); color: var(--primary, #00915a); }
+.grid-filtered .grid-filter { border-color: var(--primary, #00915a); }
+.grid-has-values .grid-filter-btn { color: var(--primary, #00915a); }
+
+/* body rows (fixed height), cellClass tones, links; spacer rows stand in for the off-screen rows of the virtual window */
+.grid-row td { height: var(--grid-row-h); line-height: calc(var(--grid-row-h) - 1px); background: var(--grid-bg); }
+.grid-row:hover td { background: rgba(0,0,0,.035); }
+.grid-row.grid-active td { background: var(--bnpp-mint, #e8fcf2); box-shadow: inset 0 0 0 1px rgba(var(--primary-rgb, 0,145,90), .35); }
+.grid-clickable { cursor: default; }
+.grid-cell.strong { font-weight: 500; color: var(--heading-color, #1d1d1b); }
+.grid-cell.dim { color: var(--muted, #6c757d); }
+.grid-cell.warn { color: #7a4f00; }
+.grid-cell.danger { color: #b02a37; }
+.grid-cell.ok { color: #0f7a5b; }
+.grid-link { color: var(--primary, #00915a); }
+.grid-spacer td { padding: 0 !important; border: 0 !important; height: 0; line-height: 0; }
+.grid-spacer-td { display: table-cell; }
+.grid-empty { position: sticky; left: 0; display: flex; align-items: center; justify-content: center; gap: .75rem; padding: 2rem 1rem; color: var(--muted, #6c757d); font-size: .875rem; }
+
+/* frozen columns: sticky left offsets are set inline by grid.js. Stacking order: frozen header / filter cells (5) above
+   the footer's frozen cells (4) above sticky header / footer cells (3) above frozen body cells (2). Frozen body cells
+   need an opaque background so scrolled content does not show through; the last one casts a shadow. */
+.grid-frozen { position: sticky; left: 0; z-index: 2; }
+.grid-row .grid-frozen { background: var(--grid-bg); }
+.grid-th.grid-frozen, .grid-filter-cell.grid-frozen { z-index: 5; }
+.grid-foot-cell.grid-frozen { z-index: 4; }
+.grid-frozen-last { border-right: 1px solid var(--grid-line) !important; box-shadow: 4px 0 6px -4px rgba(33,37,41,.18); }
+.grid-row.grid-active .grid-frozen { background: var(--bnpp-mint, #e8fcf2); }
+.grid-row:hover .grid-frozen { background: #f6f6f6; }
+
+/* footer totals: sticky at the bottom; the aggregate menu button appears on hover */
+.grid-foot-cell { bottom: 0; z-index: 3; height: var(--grid-row-h); line-height: calc(var(--grid-row-h) - 1px); background: var(--grid-foot-bg); font-weight: 600; color: var(--heading-color, #1d1d1b); border-top: 2px solid var(--grid-line); border-bottom: 0 !important; }
+.grid-foot-cell { padding-right: .35rem; }
+.grid-foot-val { display: inline-block; max-width: calc(100% - 20px); overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+.grid-foot-btn { float: right; margin-top: calc((var(--grid-row-h) - 18px) / 2); width: 16px; height: 18px; border: 0; background: transparent; color: var(--muted-2, #939ba2); cursor: pointer; padding: 0; display: inline-flex; align-items: center; justify-content: center; opacity: 0; border-radius: var(--radius-sm, .2rem); }
+.grid-foot-cell:hover .grid-foot-btn, .grid-foot-btn:focus-visible { opacity: 1; }
+.grid-foot-btn:hover { color: var(--primary, #00915a); background: rgba(0,0,0,.05); }
+.grid-num .grid-foot-btn { float: left; margin-right: .2rem; }
+
+/* ---------- popovers (value picker, column chooser, menus) ---------- */
+.grid-popover { position: fixed; z-index: 300; background: #fff; border: 1px solid var(--grid-line); border-radius: var(--radius, .25rem); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); font-family: var(--font); font-size: .8125rem; color: var(--body-color, #495057); min-width: 180px; max-width: min(420px, calc(100vw - 16px)); }
+.grid-popover-picker { width: 300px; }
+.grid-popover-chooser { width: 380px; }
+.grid-pop-head { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; padding: .6rem .75rem .3rem; }
+.grid-pop-head strong { color: var(--heading-color, #1d1d1b); font-weight: 600; }
+.grid-pop-search { display: block; width: calc(100% - 1.5rem); margin: .25rem .75rem .5rem; font-size: .8125rem; padding: .25rem .6rem; }
+.grid-pick-actions { display: flex; gap: .3rem; padding: 0 .75rem .5rem; }
+/* value picker list: virtualised, so items are absolutely positioned at fixed 26px steps inside .grid-pick-inner */
+.grid-pick-list { position: relative; overflow: auto; border-top: 1px solid var(--grid-line-light); border-bottom: 1px solid var(--grid-line-light); }
+.grid-pick-inner { position: relative; }
+.grid-pick { position: absolute; left: 0; right: 0; height: 26px; display: flex; align-items: center; gap: .5rem; padding: 0 .75rem; cursor: pointer; font-size: .8125rem; white-space: nowrap; }
+.grid-pick:hover { background: var(--light, #f5f7fb); }
+.grid-pick input { margin: 0; accent-color: var(--primary, #00915a); flex: none; }
+.grid-pick-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.grid-pick-count { color: var(--muted, #6c757d); font-variant-numeric: tabular-nums; font-size: .75rem; }
+.grid-pick.zero .grid-pick-label, .grid-pick.zero .grid-pick-count { color: var(--muted-2, #939ba2); }
+.grid-pick-none { padding: .75rem; text-align: center; }
+.grid-pick-foot { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .5rem .75rem; }
+/* column chooser rows: checkbox + label, frozen / filter badges, move / only / freeze mini buttons */
+.grid-chooser-list { max-height: 360px; overflow: auto; border-top: 1px solid var(--grid-line-light); border-bottom: 1px solid var(--grid-line-light); padding: .25rem 0; }
+.grid-chooser-group { padding: .45rem .75rem .2rem; font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted-2, #939ba2); }
+.grid-chooser-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .15rem .75rem; }
+.grid-chooser-row:hover { background: var(--light, #f5f7fb); }
+.grid-chooser-row.off .grid-chooser-label > span:first-of-type { color: var(--muted, #6c757d); }
+.grid-chooser-label { display: flex; align-items: center; gap: .5rem; min-width: 0; cursor: pointer; flex: 1; }
+.grid-chooser-label input { margin: 0; accent-color: var(--primary, #00915a); }
+.grid-chooser-label > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grid-chooser-label .badge { font-size: .62rem; }
+.grid-chooser-actions { display: inline-flex; gap: 2px; flex: none; opacity: .55; }
+.grid-chooser-row:hover .grid-chooser-actions { opacity: 1; }
+.grid-mini { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 .3rem; border: 1px solid var(--grid-line); border-radius: var(--radius-sm, .2rem); background: #fff; color: var(--body-color, #495057); cursor: pointer; font-family: inherit; font-size: .7rem; }
+.grid-mini:hover:not(:disabled) { background: var(--light, #f5f7fb); color: var(--primary, #00915a); border-color: #ced4da; }
+.grid-mini:disabled { opacity: .4; cursor: default; }
+.grid-caret { display: inline-block; width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; }
+.grid-caret-up { border-bottom: 5px solid currentColor; } .grid-caret-down { border-top: 5px solid currentColor; }
+/* header and footer menus */
+.grid-menu { display: flex; flex-direction: column; padding: .3rem 0; min-width: 200px; }
+.grid-menu-item { display: flex; align-items: center; gap: .5rem; width: 100%; text-align: left; padding: .35rem .85rem; border: 0; background: transparent; color: var(--body-color, #495057); font-family: inherit; font-size: .8125rem; cursor: pointer; }
+.grid-menu-item:hover:not(.disabled) { background: var(--light, #f5f7fb); color: var(--heading-color, #1d1d1b); }
+.grid-menu-item.active { color: var(--primary, #00915a); font-weight: 500; }
+.grid-menu-item.disabled { color: var(--muted-2, #939ba2); cursor: default; }
+.grid-menu-icon { display: inline-block; width: 13px; }
+.grid-menu-item .feather { width: 13px; height: 13px; color: var(--muted, #6c757d); }
+.grid-menu-sep { height: 1px; background: var(--grid-line-light); margin: .3rem 0; }
+
+/* ---------- responsive / print ---------- */
+@media (max-width: 767px) { .grid-search { min-width: 160px; } .grid-popover-chooser { width: calc(100vw - 16px); } }
+@media print { .grid-toolbar, .grid-chips, .grid-filters, .grid-foot-btn, .grid-resizer { display: none !important; } .grid-scroll { height: auto !important; overflow: visible; contain: none; border: 0; } }

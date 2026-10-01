@@ -1,0 +1,16 @@
+key,value,note
+base_currency,EUR,All FX rates are quoted as units of currency per 1 EUR
+ig_threshold,610,Rating numeric strictly above this = SUB IG (workbook rule)
+rating_selection,worst,"External grade = MAX numeric across Fitch/Moodys/S&P (numeric rises as credit weakens); current = MAX(internal, external) unless internal is NR"
+single_portfolio_token,SINGLE,"When portfolio_id equals this token, use portfolio_alt_id"
+amount_display_unit,1000000,Output amounts are shown in millions
+maturity_buckets,"0-3,3-5,5-10,10-20,20+",Years to maturity from reporting date
+reporting_date_rule,min_as_of,"Reporting date = MIN(position as_of_date), as in the workbook"
+dataset_label,SYNTHETIC DEMO,Shown in the UI so demo data is never mistaken for production
+attribution_label,Group,"Name of the attributed investor group used in every UI label (e.g. ""Group attributed"", ""Group share of book"")"
+limit_single_name_pct,10,ILLUSTRATIVE threshold for the concentration page: largest single asset as % of exposure (not a real mandate limit)
+limit_sponsor_pct,20,ILLUSTRATIVE: largest sponsor as % of exposure
+limit_sector_pct,35,ILLUSTRATIVE: largest sector as % of exposure
+limit_country_pct,30,ILLUSTRATIVE: largest country as % of exposure
+limit_sub_ig_pct,25,ILLUSTRATIVE: sub-investment-grade share of exposure
+limit_non_base_ccy_pct,40,ILLUSTRATIVE: share of exposure not in the base currency

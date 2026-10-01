@@ -1,0 +1,8 @@
+currency,rate_per_eur,investor_id,platform_id,note
+EUR,1,,,base currency
+GBP,0.855,,,
+USD,1.08,,,
+AUD,1.63,,,
+SEK,11.3,,,
+CHF,0.96,,,
+GBP,0.86,94305,BETA,SYNTHETIC override: hedged rate for one investor on one platform (mirrors the workbook exception)

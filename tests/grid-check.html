@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scope · grid check</title>
+<link rel="stylesheet" href="../css/fonts.css">
+<link rel="stylesheet" href="../css/scope.css">
+<link rel="stylesheet" href="../css/grid.css">
+<style>
+  body { padding: 24px; }
+  .check { margin-bottom: 16px; }
+  .check .t { padding: 4px 0; border-bottom: 1px solid var(--border-light); display: grid; grid-template-columns: 40px 1fr; gap: 8px; font-size: .8125rem; }
+  .ok { color: #0f7a5b; font-weight: 600; } .fail { color: #b02a37; font-weight: 600; }
+</style>
+</head>
+<body>
+<!-- Manual and automated check page for Scope.ui.grid (js/core/grid.js) outside the app. Loads only the core
+     scripts the grid needs, mounts a grid over synthetic rows (5k by default, 50k on demand) for hands-on
+     testing of sorting, filtering, the value picker, the column chooser, frozen columns and export, then runs
+     DOM self-checks and lists pass / fail. Results are also exposed as window.GRID_CHECK. -->
+<h1>Scope grid check <span class="badge badge-synthetic">SYNTHETIC</span></h1>
+<p class="muted">Synthetic data only. 5,000 rows by default; use the buttons for 50,000. Timings and self-checks below the grid.</p>
+<div class="page-actions" style="margin-bottom:12px">
+  <button class="btn btn-sm" id="b5k">5k rows</button>
+  <button class="btn btn-sm" id="b50k">50k rows</button>
+  <button class="btn btn-sm" id="bState">Log state</button>
+  <button class="btn btn-sm" id="bRound">setState round-trip</button>
+  <span class="small muted" id="timing"></span>
+</div>
+<section class="section"><div class="section-head"><div><h2>Positions</h2><p class="section-sub">Excel-like grid: sort (shift-click for levels), per-column filters, value picker, chooser, frozen columns, totals, export.</p></div></div>
+  <div id="host"></div>
+</section>
+<section class="section"><div class="section-head"><div><h2>Self-checks</h2></div></div><div class="check" id="checks"></div></section>
+
+<script src="../js/core/util.js"></script>
+<script src="../js/core/csv.js"></script>
+<script src="../js/core/icons.js"></script>
+<script src="../js/core/ui.js"></script>
+<script src="../js/core/grid.js"></script>
+<script>
+(function () {
+  const UI = Scope.ui, F = Scope.util.fmt;
+  // ---------- synthetic data (deterministic: the random sequence is reseeded on every build) ----------
+  const sectors = ['Renewables', 'Transport', 'Utilities', 'Digital', 'Social', 'Energy'], sub = ['Solar', 'Wind', 'Roads', 'Rail', 'Water', 'Fibre', 'Towers', 'Hospitals', 'Gas'];
+  const ccys = ['EUR', 'GBP', 'USD', 'NOK'], ratings = ['A', 'A-', 'BBB+', 'BBB', 'BBB-', 'BB+', 'BB', 'B+', 'NR'], countries = ['France', 'Germany', 'Spain', 'UK', 'Italy', 'Netherlands', 'Norway'];
+  const investors = Array.from({ length: 12 }, (_, i) => 'Investor ' + (i + 1));
+  // Park–Miller LCG and a random-element helper.
+  let seed = 11; const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+  /** n synthetic position-like rows with deliberate blanks (rating, margin, maturity) to exercise blank handling. */
+  function makeRows(n) {
+    seed = 11; const rows = new Array(n);
+    for (let i = 0; i < n; i++) {
+      const nominal = Math.round(rnd() * 90 + 10) * 1e5, drawn = Math.round(nominal * rnd() * 10) / 10;
+      rows[i] = { id: 94301 + i, asset_code: 'A' + String(1 + (i % 240)).padStart(4, '0'), asset_name: pick(sub) + ' ' + pick(['Holdings', 'Project', 'Finance', 'Infra']) + ' ' + (1 + (i % 240)),
+        investor: pick(investors), sector: pick(sectors), subsector: pick(sub), country: pick(countries), currency: pick(ccys), rating: rnd() < 0.06 ? '' : pick(ratings),
+        nominal_m: nominal / 1e6, drawn_m: drawn / 1e6, undrawn_m: (nominal - drawn) / 1e6, margin_bps: rnd() < 0.04 ? null : Math.round(rnd() * 300 + 80), coupon: Math.round(rnd() * 500) / 100,
+        wal_years: Math.round(rnd() * 150) / 10, maturity_date: rnd() < 0.03 ? '' : new Date(Date.UTC(2026 + Math.floor(rnd() * 22), Math.floor(rnd() * 12), 1 + Math.floor(rnd() * 28))).toISOString().slice(0, 10),
+        watchlist: rnd() < 0.08 ? 'Yes' : 'No', green: rnd() < 0.3 ? 'Yes' : 'No' };
+    }
+    return rows;
+  }
+  // Column set covering every column feature: frozen, link (href), cellClass, unit, totals (sum / avg / function), hidden, date.
+  const columns = [
+    { key: 'id', label: 'Holding', type: 'number', width: 84, frozen: true, group: 'Identity', format: (v) => String(v), title: 'Synthetic holding id' },
+    { key: 'asset_code', label: 'Code', frozen: true, width: 80, group: 'Identity', href: (r) => '#/asset/' + r.asset_code },
+    { key: 'asset_name', label: 'Asset', width: 200, group: 'Identity', cellClass: () => 'strong' },
+    { key: 'investor', label: 'Investor', group: 'Investors' },
+    { key: 'sector', label: 'Sector', group: 'Attributes', width: 120 }, { key: 'subsector', label: 'Subsector', group: 'Attributes', width: 110 },
+    { key: 'country', label: 'Country', group: 'Attributes', width: 110 }, { key: 'currency', label: 'Ccy', width: 64, group: 'Attributes' },
+    { key: 'rating', label: 'Rating', width: 80, group: 'Credit', cellClass: (v) => (v === 'NR' ? 'dim' : /^B/.test(v) && !/^BBB/.test(v) ? 'warn' : '') },
+    { key: 'nominal_m', label: 'Nominal', unit: 'EUR m', type: 'number', format: F.m, total: 'sum', group: 'Amounts', decimals: 1 },
+    { key: 'drawn_m', label: 'Drawn', unit: 'EUR m', type: 'number', format: F.m, total: 'sum', group: 'Amounts', decimals: 1 },
+    { key: 'undrawn_m', label: 'Undrawn', unit: 'EUR m', type: 'number', format: F.m, total: 'sum', group: 'Amounts', hidden: true, decimals: 1 },
+    { key: 'margin_bps', label: 'Margin', unit: 'bps', type: 'number', format: F.int, total: 'avg', group: 'Terms', width: 90 },
+    { key: 'coupon', label: 'Coupon', unit: '%', type: 'number', format: F.n2, group: 'Terms', width: 90 },
+    { key: 'wal_years', label: 'WAL', unit: 'years', type: 'number', format: F.n1, total: (rows) => { let s = 0, w = 0; for (const r of rows) { s += r.wal_years * r.nominal_m; w += r.nominal_m; } return w ? 'wavg ' + F.n1(s / w) : ''; }, group: 'Terms', width: 90 },
+    { key: 'maturity_date', label: 'Maturity', type: 'date', group: 'Terms', width: 110 },
+    { key: 'watchlist', label: 'Watchlist', width: 90, group: 'Flags' }, { key: 'green', label: 'Green loan', width: 90, group: 'ESG' },
+  ];
+  const host = document.getElementById('host'), timing = document.getElementById('timing');
+  let grid = null, rows = makeRows(5000);
+  /** Create the grid on first call, or swap rows via setRows on later calls, and report the render time. */
+  function build(n) {
+    rows = makeRows(n);
+    const t0 = performance.now();
+    if (grid) { grid.setRows(rows); }
+    else { grid = UI.grid({ columns, rows, rowKey: 'id', height: '56vh', storageKey: 'grid-check', exportName: 'scope_grid_check_synthetic.csv', onRow: (r) => UI.toast('Row: ' + r.asset_name + ' / ' + r.investor) }); host.appendChild(grid); }
+    requestAnimationFrame(() => { timing.textContent = `${n.toLocaleString('en-GB')} rows · ${(performance.now() - t0).toFixed(0)} ms to render`; });
+  }
+  document.getElementById('b5k').onclick = () => build(5000);
+  document.getElementById('b50k').onclick = () => build(50000);
+  document.getElementById('bState').onclick = () => console.log(JSON.stringify(grid.getState()));
+  document.getElementById('bRound').onclick = () => { const s = grid.getState(); grid.setState(s); UI.toast('setState applied: ' + JSON.stringify(s).length + ' chars'); };
+  build(5000);
+
+  // ---------- self-checks (DOM) ----------
+  const out = document.getElementById('checks'); const results = [];
+  // check(name, fn): fn returning false or throwing is a failure; each result is appended to the list as it runs.
+  const check = (name, fn) => { let ok = true, err = ''; try { const r = fn(); if (r === false) ok = false; } catch (e) { ok = false; err = String(e && e.message || e); } results.push({ name, ok, err }); out.appendChild(Object.assign(document.createElement('div'), { className: 't', innerHTML: `<span class="${ok ? 'ok' : 'fail'}">${ok ? 'ok' : 'FAIL'}</span><span>${name}${err ? ' — ' + err : ''}</span>` })); };
+  const G = UI.gridUtil;
+  check('number filter parser', () => G.parseNumberFilter('>100')(101) && !G.parseNumberFilter('>100')(100) && G.parseNumberFilter('100..200')(150) && G.parseNumberFilter('blank')(NaN));
+  check('date filter parser (year token)', () => G.parseDateFilter('2027')(Date.UTC(2027, 5, 1)) && !G.parseDateFilter('2027')(Date.UTC(2028, 0, 1)));
+  check('state round-trip', () => { const s = grid.getState(); grid.setState(s, true); return JSON.stringify(grid.getState()) === JSON.stringify(s); });
+  check('sort desc on nominal puts largest first, blanks last on margin asc', () => {
+    grid.setState({ sort: [{ key: 'nominal_m', dir: 'desc' }] }, true); const v = grid.getVisibleRows(); if (!(v[0].nominal_m >= v[1].nominal_m)) return false;
+    grid.setState({ sort: [{ key: 'margin_bps', dir: 'asc' }] }, true); const w = grid.getVisibleRows(); return w[w.length - 1].margin_bps === null && w[0].margin_bps !== null;
+  });
+  check('filters AND across columns (contract shape in/gte) and chips', () => {
+    grid.setFilters([{ field: 'sector', op: 'in', value: ['Transport'] }, { field: 'nominal_m', op: 'gte', value: 5 }]);
+    const v = grid.getVisibleRows(); return v.length > 0 && v.every((r) => r.sector === 'Transport' && r.nominal_m >= 5) && grid.querySelectorAll('.grid-chip').length === 2;
+  });
+  check('getFilters maps back to contract ops', () => { const f = grid.getFilters(); return f.some((x) => x.op === 'in' && x.field === 'sector') && f.some((x) => x.op === 'gte' && x.value === 5); });
+  check('text contains filter + global search combine', () => {
+    grid.setFilters([{ field: 'asset_name', op: 'contains', value: 'solar' }]); grid.setState({ search: 'Investor 3' }, true);
+    const v = grid.getVisibleRows(); return v.length > 0 && v.every((r) => /solar/i.test(r.asset_name) && r.investor === 'Investor 3');
+  });
+  check('clearFilters restores all rows and x of y count', () => { grid.clearFilters(); return grid.getVisibleRows().length === rows.length && /^5,000 rows$/.test(grid.querySelector('.grid-count').textContent); });
+  check('footer sum ties to data', () => { const cell = grid.querySelector('.grid-foot-cell[data-k="nominal_m"] .grid-foot-val').textContent; const s = rows.reduce((a, r) => a + r.nominal_m, 0); return cell === F.m(s); });
+  check('hidden column keeps filter (warning chip)', () => { grid.setFilters([{ field: 'undrawn_m', op: 'lte', value: 2 }]); const v = grid.getVisibleRows(); const ok = v.every((r) => r.undrawn_m <= 2) && !!grid.querySelector('.grid-chip .badge-warn'); grid.clearFilters(); return ok; });
+  check('virtualised body renders a window, not all rows', () => { const n = grid.querySelectorAll('tr.grid-row').length; return n > 5 && n < 200; });
+  check('setRows preserves scroll position', () => { const sc = grid.querySelector('.grid-scroll'); sc.scrollTop = 2000; grid.setRows(makeRows(5000)); return Math.abs(sc.scrollTop - 2000) < 1; });
+  check('column chooser hide/show + reset', () => { grid.setVisible('country', false); const a = grid.getColumns().some((c) => c.key === 'country'); grid.resetColumns(); const b = grid.getColumns().some((c) => c.key === 'country'); return !a && b; });
+  check('export CSV text has BOM header + visible columns only', () => { const tsv = grid.tsvText(); const head = tsv.split('\n')[0].split('\t'); return head[0] === 'Holding' && !head.includes('Undrawn') && tsv.split('\n').length === rows.length + 1; });
+  // frozen offsets are applied in a rAF after layout, so this check waits two frames
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    check('frozen columns get sticky left offsets (after layout)', () => { const ths = grid.querySelectorAll('th.grid-th.grid-frozen'); return ths.length === 2 && parseFloat(ths[1].style.left) > 0; });
+    const fails = results.filter((r) => !r.ok).length;
+    out.insertBefore(Object.assign(document.createElement('p'), { id: 'summary', className: fails ? 'fail' : 'ok', textContent: `${results.length - fails} passed, ${fails} failed` }), out.firstChild);
+  }));
+  window.GRID_CHECK = { results, grid: () => grid };
+})();
+</script>
+</body>
+</html>

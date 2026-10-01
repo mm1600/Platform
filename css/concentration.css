@@ -1,0 +1,99 @@
+/* Concentration & risk page (js/modules/layer2-concentration.js) and the chart additions in js/core/charts-extra.js
+   (choropleth, treemap, heatmap, pareto, ladder). Only .cx- classes; tokens come from css/scope.css. */
+
+/* ---------- page ---------- */
+.cx-kpis { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.cx-kpis .kpi-value { font-size: 1.5rem; }
+.cx-kpis .kpi-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cx-filter-note { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem 1rem; }
+.cx-filter-note .feather { color: var(--info); }
+.cx-filter-list { color: var(--muted); font-size: .8125rem; flex: 1; min-width: 200px; }
+.cx-hint { font-size: .75rem; color: var(--muted); margin: .5rem 0 0; }
+.cx-controls { display: flex; flex-wrap: wrap; gap: .5rem .75rem; align-items: center; }
+.cx-ctrl { display: inline-flex; align-items: center; gap: .4rem; font-size: .8125rem; color: var(--muted); margin: 0; }
+.cx-select.input { font-size: .8125rem; padding: .2rem 2rem .2rem .6rem; background-position: right .55rem center; }
+
+/* threshold table: utilisation bar */
+.cx-util-cell { display: inline-flex; align-items: center; gap: .5rem; }
+.cx-util { display: inline-block; width: 110px; height: 6px; background: var(--border-light); border-radius: 2px; overflow: hidden; vertical-align: middle; }
+.cx-util > span { display: block; height: 100%; background: var(--primary); }
+.cx-util.cx-util-over > span { background: var(--warning); }
+.cx-util-pct { font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 3.2em; text-align: right; }
+
+/* segmented toggle (square corners, never pill-shaped) */
+.cx-seg { display: inline-flex; border: 1px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden; background: #fff; }
+.cx-seg button { font-family: inherit; font-size: .8125rem; line-height: 1.5; padding: .15rem .7rem; border: 0; background: transparent; color: var(--body-color); cursor: pointer; }
+.cx-seg button + button { border-left: 1px solid var(--border-color); }
+.cx-seg button:hover { background: var(--light); }
+.cx-seg button.active { background: var(--primary); color: #fff; }
+.cx-seg button:focus-visible { outline: 0; box-shadow: inset 0 0 0 .15rem rgba(var(--primary-rgb), .35); }
+
+/* ---------- choropleth ---------- */
+.cx-choro { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 1.25rem; align-items: start; }
+.cx-choro-main { min-width: 0; }
+.cx-choro-bar { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; margin-bottom: .5rem; }
+.cx-choro-bar .cx-hint { margin: 0; }
+.cx-map { min-width: 0; }
+.cx-map-svg { width: 100%; height: auto; background: #fbfcfd; border: 1px solid var(--border-light); border-radius: var(--radius-sm); }
+.cx-country { stroke: #fff; stroke-width: .6; vector-effect: non-scaling-stroke; }
+.cx-country.cx-has:hover, .cx-country.cx-hl { stroke: var(--bnpp-black); stroke-width: 1.4; }
+.cx-scale { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem 1rem; font-size: .75rem; color: var(--muted); margin-top: .6rem; font-variant-numeric: tabular-nums; }
+.cx-scale-item { display: inline-flex; align-items: center; gap: .35rem; }
+.cx-scale-ramp { display: inline-block; width: 120px; height: 8px; border-radius: 2px; }
+.cx-swatch { width: 12px; height: 12px; border-radius: 2px; display: inline-block; flex: none; }
+.cx-swatch-none { background: #eceff1; box-shadow: inset 0 0 0 1px var(--border-color); }
+.cx-swatch-line { display: inline-block; width: 16px; height: 2px; border-radius: 1px; }
+.cx-swatch-dash { display: inline-block; width: 16px; height: 0; border-top: 2px dashed var(--bnpp-grey); }
+.cx-rank { list-style: none; margin: 0; padding: 0; max-height: 420px; overflow-y: auto; font-size: .8125rem; border-top: 1px solid var(--border-light); }
+.cx-rank li { display: grid; grid-template-columns: 1.6rem minmax(0, 1fr) auto 3.4rem; grid-template-rows: auto 3px; column-gap: .5rem; row-gap: .25rem; align-items: center; padding: .4rem .35rem; border-bottom: 1px solid var(--border-light); }
+.cx-rank li:hover { background: rgba(0,0,0,.035); }
+.cx-rank-n { color: var(--muted-2); font-variant-numeric: tabular-nums; text-align: right; }
+.cx-rank-name { display: inline-flex; align-items: center; gap: .45rem; min-width: 0; color: var(--heading-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cx-rank-val { color: var(--heading-color); font-variant-numeric: tabular-nums; text-align: right; }
+.cx-rank-share { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+.cx-rank-meter { grid-column: 2 / 5; height: 3px; background: var(--border-light); border-radius: 2px; overflow: hidden; }
+.cx-rank-meter > span { display: block; height: 100%; background: var(--primary); opacity: .55; }
+
+/* ---------- treemap ---------- */
+.cx-tm { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 1.25rem; align-items: start; }
+.cx-tm-chart { min-width: 0; }
+.cx-treemap .cx-group-bg { stroke: #fff; stroke-width: 2; }
+.cx-tile { stroke: #fff; stroke-width: 1; transition: opacity .12s; }
+.cx-treemap g:hover > .cx-tile { opacity: .85; }
+.cx-tile.cx-tile-selected { stroke: var(--bnpp-black); stroke-width: 2.5; }
+.cx-tile-label { font-size: 11.5px; font-weight: 500; pointer-events: none; }
+.cx-tile-value { font-size: 11px; pointer-events: none; font-variant-numeric: tabular-nums; opacity: .9; }
+.cx-group-label { font-size: 12px; font-weight: 600; pointer-events: none; }
+.cx-panel { border-left: 1px solid var(--border-light); padding-left: 1.25rem; font-size: .8125rem; min-width: 0; }
+.cx-panel .dl { font-size: .8125rem; gap: .35rem .75rem; }
+.cx-panel-head { margin-bottom: .75rem; }
+.cx-panel-head h3 { margin: 0 0 .15rem; }
+.cx-panel-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+.cx-panel-empty { display: flex; gap: .5rem; align-items: flex-start; color: var(--muted); }
+.cx-panel-empty p { margin: 0; }
+
+/* ---------- heatmap ---------- */
+.cx-scroll { overflow-x: auto; max-width: 100%; }
+.cx-heatmap .chart-label { font-size: 11.5px; }
+.cx-cell { transition: opacity .12s; }
+.cx-heatmap g:hover > .cx-cell, .cx-heatmap g:hover > .cx-cell-total { stroke: var(--bnpp-black); stroke-width: 1.25; }
+.cx-cell-total { fill: var(--light); }
+.cx-cell-text { font-size: 11px; font-variant-numeric: tabular-nums; pointer-events: none; fill: var(--heading-color); }
+.cx-total-text { font-weight: 600; fill: var(--heading-color); }
+
+/* ---------- pareto & ladder ---------- */
+.cx-cum-line { fill: none; stroke: var(--series-2); stroke-width: 2; stroke-linejoin: round; pointer-events: none; }
+.cx-cum-dot { fill: var(--series-2); stroke: #fff; stroke-width: 2; pointer-events: none; }
+.cx-cum-label { font-weight: 600; fill: var(--heading-color); }
+.cx-threshold { stroke: var(--bnpp-grey); stroke-width: 1.25; stroke-dasharray: 4 3; pointer-events: none; }
+.cx-threshold-label { font-size: 11px; fill: var(--muted); pointer-events: none; }
+.cx-buckets { margin-top: .75rem; }
+.cx-buckets .tbl th { cursor: default; position: static; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1100px) {
+  .cx-choro, .cx-tm { grid-template-columns: minmax(0, 1fr); }
+  .cx-panel { border-left: 0; border-top: 1px solid var(--border-light); padding: 1rem 0 0; }
+}
+@media print { .cx-seg, .cx-controls, .cx-panel-actions { display: none !important; } }
+.cx-rank li:focus-visible { outline: 0; box-shadow: inset 0 0 0 .15rem rgba(var(--primary-rgb), .35); }

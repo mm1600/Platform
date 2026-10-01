@@ -1,0 +1,20 @@
+source_header,canonical_field,required,note
+Portfolio,portfolio_id,Y,Investor/portfolio identifier (Holdings col G)
+Alt Portfolio,portfolio_alt_id,N,Used when Portfolio = SINGLE (Holdings col H)
+Security ID,holding_id,Y,Holding identifier (Holdings col I)
+Security Name,security_name,N,Holdings col J
+Position Date,as_of_date,Y,Holdings col F
+Ccy,currency,Y,
+Nominal Amount,nominal,Y,Calculations CO
+Drawn Amount,drawn,Y,Calculations CQ
+Commitment Amount,commitment,N,Calculations CS
+Internal Rating,internal_grade,N,
+Fitch Rating,fitch,N,
+Moodys Rating,moodys,N,
+S&P Rating,sp,N,
+Funding Date,funding_date,N,
+Maturity Date,maturity_date,N,
+Rate Type,coupon_type,N,"Fixed → Fixed, anything else → Floating"
+Coupon Rate,coupon,N,percent
+Margin Bps,margin_bps,N,
+Instrument,instrument_type,N,
