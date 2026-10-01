@@ -90,7 +90,7 @@ Load the four sheets (drop the workbook, drop CSVs, or paste from Excel) and see
 
 The sheet layouts, the Scope Settings sheet and how formulas are handled are described in [`data/SCHEMA.md`](data/SCHEMA.md). Synthetic examples of all five sheets are in `data/demo/` (`Scope-demo.xlsx` plus one CSV per sheet). A loaded workbook stays in that browser (IndexedDB) until you reset to the demo; loading your own data clears the demo. Nothing is uploaded anywhere.
 
-To regenerate the synthetic demo workbook: `node tools/gen-demo.js` (deterministic). To inspect any workbook from the command line: `node tools/xlsx-check.js file.xlsx`.
+To regenerate the synthetic demo workbook: `node tools/gen-demo.js` (deterministic). To inspect any workbook from the command line: `node tools/xlsx-check.js file.xlsx`. To see exactly how the calculation reads it (header rows, which column feeds each input, the six Mapping tables, workbook checks, issues): `node tools/diagnose.js file.xlsx`.
 
 ## How the calculations work
 
@@ -148,6 +148,7 @@ tools/
   serve.js               zero-dependency static server
   gen-demo.js            synthetic demo workbook generator
   xlsx-check.js          inspect a workbook from the command line
+  diagnose.js            show how the AUM calculation reads a workbook: header rows, column roles, Mapping tables, checks, issues
 tests/                   open tests/index.html, or run: node tests/run-node.js
 ```
 
