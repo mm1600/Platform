@@ -1,0 +1,16 @@
+/* Scope · custom sheets page (js/modules/layer1-sheets.js). */
+.cs-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.cs-toolbar .input { max-width: 260px; }
+.cs-wrap { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.2fr); gap: 14px; align-items: start; margin-bottom: 14px; }
+@media (max-width: 900px) { .cs-wrap { grid-template-columns: 1fr; } }
+.cs-panel { background: #fff; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px 12px; }
+.cs-panel h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.cs-avail-list { max-height: 52vh; overflow: auto; margin-top: 8px; }
+.cs-avail-list details { margin: 2px 0; } .cs-avail-list summary { cursor: pointer; font-weight: 600; font-size: 13px; padding: 3px 0; }
+.cs-field { display: block; font-size: 13px; padding: 2px 4px 2px 14px; border-radius: 3px; cursor: pointer; }
+.cs-field:hover { background: var(--primary-tint); } .cs-field.on { color: var(--primary); font-weight: 600; }
+.cs-chosen { max-height: 48vh; overflow: auto; }
+.cs-col { display: grid; grid-template-columns: 26px 1fr auto auto auto; gap: 4px; align-items: center; padding: 3px 0; border-bottom: 1px solid var(--border-color); }
+.cs-col.missing .cs-head { border-color: var(--danger); }
+.cs-idx { font-size: 11px; color: var(--muted); text-align: right; padding-right: 4px; }
+.cs-head { font-size: 13px; }

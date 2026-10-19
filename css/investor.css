@@ -1,0 +1,57 @@
+/* Investor page (#/investor/<label>) and the look-through sections of the investor book. All classes are .iv- prefixed. */
+
+/* Direct / Look-through / Total toggle in the page header */
+.iv-toggle { gap: .3rem; }
+.iv-toggle-label { font-size: .8125rem; color: var(--muted); margin-right: .2rem; }
+.iv-toggle .chip:disabled { opacity: .5; cursor: not-allowed; }
+.iv-toggle .chip:disabled:hover { background: #fff; }
+
+/* ten stat cards as two rows of five on desktop; they flow to fewer columns on narrower screens */
+.iv-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+.iv-kpis .kpi-value { font-size: 1.35rem; }
+.iv-kpis .kpi-sub { overflow-wrap: anywhere; }
+
+/* four breakdown charts as a 2 × 2 block */
+.iv-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* rows of cards keep the standard card spacing below them */
+.iv-row { margin-bottom: 24px; }
+
+/* notices */
+.iv-notice { margin-bottom: 1rem; }
+.section .iv-notice { box-shadow: none; border: 1px solid var(--border-light); margin: .75rem 0 0; }
+.iv-issues ul, .iv-issue-list { margin: .4rem 0 0; padding-left: 1.1rem; font-size: .8125rem; }
+.iv-issues li, .iv-issue-list li { margin: .15rem 0; }
+
+/* profile lists (platforms, fund units held) */
+.iv-platforms { display: flex; flex-direction: column; gap: .15rem; }
+.iv-links { display: flex; flex-wrap: wrap; gap: .35rem 1rem; }
+
+/* unit holders: table on the left, ownership split on the right */
+.iv-holders { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); gap: 24px; align-items: start; }
+.iv-sublabel { font-size: .8125rem; font-weight: 600; color: var(--muted-2); margin-bottom: .5rem; }
+.iv-check { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; margin-top: .75rem; font-size: .8125rem; color: var(--body-color); }
+.iv-check b { color: var(--heading-color); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* holders × funds share matrix */
+.iv-matrix-wrap { max-height: none; }
+.iv-matrix { width: auto; min-width: 560px; }
+.iv-matrix td:first-child { min-width: 170px; }
+.iv-matrix td.num, .iv-matrix th.num { min-width: 88px; }
+.iv-matrix tr.iv-ext td { color: var(--muted); font-style: italic; }
+.iv-matrix tfoot td { position: static; }
+.iv-matrix tfoot tr + tr td { border-top: 1px solid var(--border-color); font-weight: 400; }
+.iv-matrix td.iv-bad { color: var(--danger); font-weight: 600; }
+
+/* reconciliation line under the look-through investor table */
+.iv-recon { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem 1.25rem; margin-top: .75rem; padding: .6rem .75rem; background: var(--light); border-radius: var(--radius-sm); font-size: .8125rem; }
+.iv-recon b { color: var(--heading-color); font-weight: 600; font-variant-numeric: tabular-nums; }
+.iv-recon-note { margin: .5rem 0 0; }
+
+@media (max-width: 1199px) {
+  .iv-kpis { grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); }
+}
+@media (max-width: 991px) {
+  .iv-holders, .iv-charts { grid-template-columns: 1fr; }
+  .iv-row { margin-bottom: 16px; }
+}

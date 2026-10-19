@@ -1,0 +1,8 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
+# local tool settings
+.vscode/
+.idea/
