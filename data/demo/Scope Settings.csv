@@ -1,0 +1,30 @@
+,"Scope Settings: how much of each investor column the Group owns (as in the workbook's Output header row), and a formula for each view that is not a plain investor column (as in the Calculations sheet, with names instead of column letters). Weights: 1, 0.35, 35% or 7/20. A view named ""<investor> incl. part in funds"" also says which share of each fund's units that investor holds."
+,Investors,,,,,Views,,,FX Exception,,,,,,Settings
+,Investor column,Type,Display name,Group ownership,,View,Formula,,Investor,Currency,View,Rate,Note,,Setting,Value
+,Investor 1,Group entity,,1,,Region A,Investor 4 + Investor 5,,Investor 5,GBP,Region A,0.86,one hedged rate for one investor on one view (synthetic example),,Attribution label,Group
+,Investor 2,Group entity,,1,,Investor 1 incl. part in funds,Investor 1 + 1/4 × Fund 1 + 15% of Fund 2 + Fund 6,,61012,GBP,Investor 12,Investor 21 FX for GBP / EUR,portfolio code 61012 in GBP on the Investor 12 view: one rate per asset from this Hardcoded column (synthetic example),,IG threshold,610
+,Investor 3,Group entity,,1,,Investor 2 incl. part in funds,Investor 2 + 0.1 × Fund 2 + Fund 7,,,,,,,,Base currency,EUR
+,Investor 4,Group entity,,1,,Region A incl. part in funds,Region A + 0.1 × Fund 1 + 0.05 × Fund 2 + Fund 3,,,,,,,,FX quote,Auto
+,Investor 5,Group entity,,1,,,,,,,,,,,FX rate source,"Workbook: one rate per currency, from the reference investor"
+,Investor 6,Group entity,,1,,,,,,,,,,,FX reference investor,Investor 1
+,Investor 7,Group entity,,1,,,,,,,,,,,Single portfolio token,SINGLE
+,Investor 8,Group entity,,1,,,,,,,,,,,Maturity buckets,"0-3, 3-5, 5-10, 10-20, 20+"
+,Investor 9,Group entity,,1
+,Investor 10,Group entity,,1
+,Investor 11,Mandate,,0
+,Investor 12,Mandate,,0
+,Investor 13,Third party,,0
+,Investor 14,Third party,,0
+,Investor 15,Third party,,0
+,Investor 16,Third party,,0
+,Investor 17,Third party,,0
+,Investor 18,Third party,,0
+,Investor 19,Third party,,0
+,Investor 20,Third party,,0
+,Fund 1,Fund,,0.45
+,Fund 2,Fund,,0.4
+,Fund 3,Fund,,1
+,Fund 4,Fund,,0.6
+,Fund 5,Fund,,0
+,Fund 6,Fund,,1
+,Fund 7,Fund,,1
