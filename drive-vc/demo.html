@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>drive-vc demo</title>
+<style>
+  body { margin: 0; font: 14px/1.45 system-ui, sans-serif; color: #212529; background: #f5f7fb; }
+  .wrap { display: flex; flex-wrap: wrap; gap: 16px; padding: 16px; }
+  .pane { flex: 1 1 360px; background: #fff; border: 1px solid #dee2e6; border-radius: 6px; overflow: hidden; }
+  .pane h2 { margin: 0; padding: 8px 12px; font-size: 13px; background: #f1f3f5; border-bottom: 1px solid #dee2e6; }
+  .app { padding: 12px; } .app label { display: block; margin: 6px 0; } .app input[type=text] { font: inherit; padding: 4px 6px; width: 100%; box-sizing: border-box; }
+  .app ul { list-style: none; padding: 0; } .app li { display: flex; gap: 6px; align-items: center; padding: 3px 0; } .app li span { flex: 1; }
+  .intro { padding: 0 16px; max-width: 900px; } code { background: #eef; padding: 0 3px; }
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>drive-vc demo</h1>
+  <p id="mode"></p>
+</div>
+<div class="wrap" id="panes"></div>
+<script src="drive-vc.js"></script>
+<script src="drive-vc-ui.js"></script>
+<script>
+  /** A tiny app: a title, a colour and a task list. Its whole shared data is one object; vc.touch() after each change. */
+  function makeApp(mount, opts) {
+    const keep = opts.keepKey, start = { title: 'Team plan', colour: 'green', tasks: [{ id: 't1', text: 'First task', done: false }] };
+    let data = (keep && JSON.parse(localStorage.getItem(keep) || 'null')) || JSON.parse(JSON.stringify(start));
+    const top = document.createElement('div'), box = document.createElement('div'); box.className = 'app'; mount.append(top, box);
+    const changed = () => { if (keep) localStorage.setItem(keep, JSON.stringify(data)); vc.touch(); draw(); };
+    const vc = DriveVC.ui(Object.assign({ mount: top, getState: () => JSON.parse(JSON.stringify(data)), setState: (s) => { data = s; if (keep) localStorage.setItem(keep, JSON.stringify(data)); draw(); } }, opts.vc));
+    function draw() {
+      box.innerHTML = '';
+      const field = (label, key) => { const l = document.createElement('label'); l.textContent = label; const i = document.createElement('input'); i.type = 'text'; i.value = data[key] || ''; i.onchange = () => { data[key] = i.value; changed(); }; l.append(i); return l; };
+      box.append(field('Title', 'title'), field('Colour', 'colour'));
+      const ul = document.createElement('ul');
+      for (const t of data.tasks || []) {
+        const li = document.createElement('li'), cb = document.createElement('input'), sp = document.createElement('span'), x = document.createElement('button');
+        cb.type = 'checkbox'; cb.checked = !!t.done; cb.onchange = () => { t.done = cb.checked; changed(); };
+        sp.textContent = t.text; x.textContent = 'Remove'; x.onclick = () => { data.tasks = data.tasks.filter((y) => y !== t); changed(); };
+        li.append(cb, sp, x); ul.append(li);
+      }
+      const add = document.createElement('input'); add.type = 'text'; add.placeholder = 'Add a task and press Enter';
+      add.onkeydown = (e) => { if (e.key === 'Enter' && add.value.trim()) { (data.tasks = data.tasks || []).push({ id: 't' + Date.now().toString(36), text: add.value.trim(), done: false }); changed(); } };
+      box.append(ul, add);
+    }
+    draw();
+    return vc;
+  }
+  const two = /[?&]two\b/.test(location.search), panes = document.getElementById('panes'), mode = document.getElementById('mode');
+  const pane = (title) => { const p = document.createElement('div'); p.className = 'pane'; p.innerHTML = `<h2>${title}</h2>`; panes.append(p); return p; };
+  if (two) {
+    mode.innerHTML = 'Two people on one shared folder held in memory (nothing is written to disk). Change something on the left, Save, and watch the right side offer the newer version. <a href="?">Use a real folder instead</a>.';
+    const shared = DriveVC.memory({ name: 'Demo folder', lag: 40 }), fast = { pollMs: 2000, settleMs: 200, verifyMs: 200 };
+    makeApp(pane('Sam'), { vc: Object.assign({ appId: 'demo-sam', user: 'Sam', store: shared }, fast) });
+    makeApp(pane('Alex'), { vc: Object.assign({ appId: 'demo-alex', user: 'Alex', store: shared }, fast) });
+  } else {
+    mode.innerHTML = 'Connect a folder (a shared drive, or any folder to try it). Open this page in a second Edge or Chrome window on the same folder to see two people. <a href="?two">Try two people in one page instead</a>.';
+    makeApp(pane('My app'), { keepKey: 'drive-vc-demo-data', vc: { appId: 'demo' } });
+  }
+</script>
+</body>
+</html>
