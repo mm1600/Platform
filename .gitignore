@@ -1,0 +1,10 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
+# local tool settings
+.vscode/
+.idea/
+# where your data folder is (tools/data-folder.js): stays on your machine
+scope.config.json

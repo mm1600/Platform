@@ -1,0 +1,31 @@
+Owner ↓ · owns →,Group,Region A,Region A incl. part in funds,Investor 1,Investor 2,Investor 3,Investor 4,Investor 5,Investor 6,Investor 7,Investor 8,Investor 9,Investor 10,Investor 11,Investor 12,Investor 13,Investor 14,Investor 15,Investor 16,Investor 17,Investor 18,Investor 19,Investor 20,Fund 1,Fund 2,Fund 3,Fund 4,Fund 5,Fund 6,Fund 7
+Group,,,,1,1,1,1,0.1,35%,1,1,1,1,,,,,,,,,,,9/20,0.4,0.6
+Region A,,,,,,1,1
+Region A incl. part in funds,,1,,,,,,,,,,,,,,,,,,,,,,0.1,0.05
+Investor 1,,,,1,,,,,,,,,,,,,,,,,,,,1/4,15%
+Investor 2,,,,,1,,,,,,,,,,,,,,,,,,,,0.1,1/2
+Investor 3,,,,,,1
+Investor 4,,,,,,,1
+Investor 5,,,,,,,,1
+Investor 6,,,,,,,,,1
+Investor 7,,,,,,,,,,1
+Investor 8,,,,,,,,,,,1
+Investor 9,,,,,,,,,,,,1
+Investor 10,,,,,,,,,,,,,1
+Investor 11,,,,,,,,,,,,,,1
+Investor 12,,,,,,,,,,,,,,,1
+Investor 13,,,,,,,,,,,,,,,,1
+Investor 14,,,,,,,,,,,,,,,,,1
+Investor 15,,,,,,,,,,,,,,,,,,1
+Investor 16,,,,,,,,,,,,,,,,,,,1
+Investor 17,,,,,,,,,,,,,,,,,,,,1
+Investor 18,,,,,,,,,,,,,,,,,,,,,1
+Investor 19,,,,,,,,,,,,,,,,,,,,,,1
+Investor 20,,,,,,,,,,,,,,,,,,,,,,,1
+Fund 1,,,,,,,,,,,,,,,,,,,,,,,,1
+Fund 2,,,,,,,,,,,,,,,,,,,,,,,,,1
+Fund 3,,,,,,,,,,,,,,,,,,,,,,,,,,1
+Fund 4,,,,,,,,,,,,,,,,,,,,,,,,,,,1
+Fund 5,,,,,,,,,,,,,,,,,,,,,,,,,,,,1
+Fund 6,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1
+Fund 7,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1

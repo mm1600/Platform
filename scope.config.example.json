@@ -1,0 +1,4 @@
+{
+  "_how": "Optional: you can instead pick the folder on the Data page (Choose data folder…), which works with index.html opened directly. To fix the folder for everyone using this copy, copy this file to scope.config.json (same folder) and set dataFolder to the folder above your period folders, e.g. Quarterly data containing Q1 2026, Q2 2026/April, Q2 2026/May; single backslashes are fine. It is used when Scope runs through start.bat / start.command and wins over a picked folder. scope.config.json is never published.",
+  "dataFolder": "S:/Team/AUM/Quarterly data"
+}
